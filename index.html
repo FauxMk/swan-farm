@@ -84,6 +84,8 @@
   .settings .note{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.35}
   .settings .note + .note{border-top:0;padding-top:4px;margin-top:4px}
   .settings .version b{color:var(--ink);font-weight:600}
+  .settings .docs a{color:var(--moss);text-decoration:underline;text-decoration-color:rgba(122,112,96,.45)}
+  .settings .docs a:hover{color:var(--ink)}
   .settings-buttons{display:flex;gap:6px;margin:4px 0 6px;padding-top:8px;border-top:1px solid var(--line)}
   .settings-buttons button{flex:1;font-family:inherit;font-size:11.5px;font-weight:600;padding:7px 4px;border-radius:8px;cursor:pointer;background:var(--cream);border:1px solid var(--line);color:var(--ink)}
   .settings-buttons button:hover{background:#ece4d2}
@@ -376,6 +378,7 @@
     </div>
     <p class="note" data-i18n="opt_endless_note">Бесконечный: после терема можно строить пристройки и играть дальше.</p>
     <p class="note desktop-only" data-i18n-html="opt_keys">Клавиши: <b>1–4</b> грядки · <b>W</b> колодец · <b>C</b> рубить · <b>H</b> молоток · <b>Пробел</b> ждать · <b>Esc</b> пауза</p>
+    <p class="note docs"><a href="privacy.html" target="_blank" rel="noopener" data-i18n="doc_privacy">Политика конфиденциальности</a> · <a href="terms.html" target="_blank" rel="noopener" data-i18n="doc_terms">Пользовательское соглашение</a></p>
     <p class="note version"><b data-i18n="title_short">Дом и грядки</b> · <span id="app-version"></span><br><span data-i18n="author_label">Автор</span>: SWAN</p>
   </div>
 
@@ -526,7 +529,7 @@
   "use strict";
 
   /* Версия игры — единственная точка правды. Меняешь здесь — переименуй и файл: farm vX.Y.html */
-  var VERSION = "1.6.2";
+  var VERSION = "1.6.3";
   var AUTHOR = "SWAN";
   var CW = 320, CH = 200, HORIZON = 58;
 
@@ -628,7 +631,7 @@
       opt_endless: "Бесконечный режим",
       opt_endless_note: "Бесконечный: после терема можно строить пристройки и играть дальше.",
       opt_keys: "Клавиши: <b>1–4</b> грядки · <b>W</b> колодец · <b>C</b> рубить · <b>H</b> молоток · <b>Пробел</b> ждать · <b>Esc</b> пауза",
-      language: "Язык", author_label: "Автор",
+      language: "Язык", author_label: "Автор", doc_privacy: "Политика конфиденциальности", doc_terms: "Пользовательское соглашение",
       btn_ach: "Достижения", btn_records: "Рекорды", btn_legacy: "Наследие",
       btn_reward_ad: "Бонус за рекламу",
       ad_done: "Спасибо за просмотр: +{n} золота",
@@ -775,7 +778,7 @@
       opt_endless: "Endless mode",
       opt_endless_note: "Endless: after the mansion you can build extensions and keep playing.",
       opt_keys: "Keys: <b>1–4</b> beds · <b>W</b> well · <b>C</b> chop · <b>H</b> hammer · <b>Space</b> wait · <b>Esc</b> pause",
-      language: "Language", author_label: "Author",
+      language: "Language", author_label: "Author", doc_privacy: "Privacy policy", doc_terms: "Terms of use",
       btn_ach: "Achievements", btn_records: "Records", btn_legacy: "Legacy",
       btn_reward_ad: "Reward an ad",
       ad_done: "Thanks for watching: +{n} gold",
@@ -1419,6 +1422,21 @@
     }
   }
   function musicToggle(on) { if (on) musicStart(); else musicStop(); }
+
+  /* ── Свернули вкладку или приложение ВК — звук молчит ──────── */
+  var audioPaused = false;
+  function audioPause() {
+    if (audioPaused) return;
+    audioPaused = true;
+    if (state && state.settings && state.settings.music) musicStop();
+    if (audioCtx) { try { audioCtx.suspend(); } catch (e) {} }
+  }
+  function audioResume() {
+    if (!audioPaused) return;
+    audioPaused = false;
+    if (audioCtx) { try { audioCtx.resume(); } catch (e) {} }
+    if (state && state.settings && state.settings.music) musicStart();
+  }
 
   function nextUpgrade() {
     var lvl = state.house.level;
@@ -2158,6 +2176,13 @@
         if (!b) return;
         bridge = b;
         try {
+          if (b.subscribe) b.subscribe(function (ev) {
+            var type = ev && ev.detail && ev.detail.type;
+            if (type === "VKWebAppViewHide") audioPause();
+            else if (type === "VKWebAppViewRestore") audioResume();
+          });
+        } catch (e) {}
+        try {
           var p = b.send("VKWebAppInit");
           if (p && p.then) p.then(function () { inited = true; }).catch(function () {});
           else inited = true;
@@ -2761,6 +2786,10 @@
     var verEl=document.getElementById("app-version");
     if(verEl)verEl.textContent="v"+VERSION;
     VKBridge.init();
+    document.addEventListener("visibilitychange",function(){
+      if(document.hidden) audioPause(); else audioResume();
+    });
+    window.addEventListener("pagehide",audioPause);
     Platform.init().then(function(){
       if(!Platform.isPortal())return;
       if(loadGame())return;
