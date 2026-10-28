@@ -517,7 +517,7 @@
   "use strict";
 
   /* Версия игры — единственная точка правды. Меняешь здесь — переименуй и файл: farm vX.Y.html */
-  var VERSION = "1.5.4";
+  var VERSION = "1.6.0";
   var AUTHOR = "SWAN";
   var CW = 320, CH = 200, HORIZON = 58;
 
@@ -2115,6 +2115,36 @@
     } else win.classList.remove("on");
   }
 
+  /* ── Мост ВК: сообщает площадке, что игра загрузилась ──────── */
+  var VKBridge = (function () {
+    var bridge = null, inited = false, started = false;
+    function inFrame() {
+      try { return window.self !== window.top; } catch (e) { return true; }
+    }
+    function load(cb) {
+      if (window.vkBridge) return cb(window.vkBridge);
+      var s = document.createElement("script");
+      s.src = "https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js";
+      s.onload = function () { cb(window.vkBridge || null); };
+      s.onerror = function () { cb(null); };
+      document.head.appendChild(s);
+    }
+    function init() {
+      if (started) return;
+      started = true;
+      if (!inFrame()) return; // в обычном браузере мост не нужен
+      load(function (b) {
+        if (!b) return;
+        bridge = b;
+        try {
+          var p = b.send("VKWebAppInit");
+          if (p && p.then) p.then(function () { inited = true; }).catch(function () {});
+          else inited = true;
+        } catch (e) {}
+      });
+    }
+    return { init: init, ready: function () { return inited; } };
+  })();
   /* ── Платформа: Яндекс Игры или обычный браузер ────────────── */
   var Platform = (function () {
     var sdk = null, player = null, boards = null;
@@ -2610,7 +2640,7 @@
     }
     var adBtn=document.getElementById("btn-reward-ad");
     if(adBtn){
-      Platform.init().then(function(){adBtn.style.display=Platform.isPortal()?"":"none";});
+    Platform.init().then(function(){adBtn.style.display=Platform.isPortal()?"":"none";});
       adBtn.addEventListener("click",function(){
         if(!state||state.won)return;
         var left=rewardAdLeft();
@@ -2709,6 +2739,7 @@
     applyI18n();
     var verEl=document.getElementById("app-version");
     if(verEl)verEl.textContent="v"+VERSION;
+    VKBridge.init();
     Platform.init().then(function(){
       if(!Platform.isPortal())return;
       if(loadGame())return;
