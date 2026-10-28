@@ -1,0 +1,2728 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Дом и грядки — пошаговая игра</title>
+<meta name="author" content="SWAN" />
+<meta name="description" content="Пошаговая игра о маленькой усадьбе: поливай, собирай, строй — от сарая до терема." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23f6f1e6'/%3E%3Cpath d='M14 36 L32 18 L50 36 L50 54 L14 54 Z' fill='%238d5b3f' stroke='%236b4531' stroke-width='2'/%3E%3Crect x='27' y='40' width='10' height='14' fill='%23a9743f'/%3E%3Ccircle cx='40' cy='34' r='4' fill='%23d9a441'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#2f2a24;--cream:#f6f1e6;--paper:#efe7d6;--line:#d9cdb4;
+    --moss:#4a7a3c;--gold:#b4802a;--wood:#8d5b3f;--muted:#7a7060;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",sans-serif;
+    background:radial-gradient(circle at 30% 0%,#3a332a 0%,#1c1915 70%);
+    color:var(--ink);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:18px;
+  }
+  .app{
+    width:min(1180px,100%);background:var(--cream);border-radius:18px;
+    overflow:hidden;box-shadow:0 28px 70px rgba(0,0,0,.55);
+    display:grid;grid-template-columns:minmax(0,1fr) 330px;grid-template-rows:auto auto auto;
+  }
+  .hidden{display:none !important}
+
+  .hud{
+    grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:12px 16px;background:var(--ink);color:var(--cream);
+  }
+  .hud .turn{font-family:Georgia,serif;font-size:15px;margin-right:auto;display:flex;align-items:center;gap:8px}
+  .hud .turn b{font-size:19px;color:#f0d79a}
+  .pill{
+    display:inline-flex;align-items:baseline;gap:6px;
+    background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);
+    border-radius:999px;padding:5px 12px;font-size:13px;white-space:nowrap;
+    transition:background .2s,border-color .2s;
+  }
+  .pill span{opacity:.72;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+  .pill b{font-size:15px;font-variant-numeric:tabular-nums;color:#f3e6c8}
+  .pill.raining{background:rgba(120,180,220,.28);border-color:rgba(120,180,220,.45)}
+  .pill.trading{background:rgba(240,200,100,.22);border-color:rgba(240,200,100,.4)}
+  .pill.reputation{background:linear-gradient(135deg,rgba(217,164,65,.35),rgba(180,128,42,.35));border-color:rgba(217,164,65,.55);cursor:pointer}
+  .pill.reputation:hover{background:linear-gradient(135deg,rgba(217,164,65,.5),rgba(180,128,42,.5))}
+  .ghost{background:none;border:1px solid rgba(255,255,255,.25);color:var(--cream);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .ghost:hover{background:rgba(255,255,255,.12)}
+  .ghost.icon-btn{padding:5px 9px;display:inline-flex;align-items:center;justify-content:center;min-width:32px}
+  .ghost.icon-btn svg{display:block}
+
+  .quest-pill{
+    width:32px;height:32px;border-radius:50%;
+    background:linear-gradient(135deg,#f0c060,#d9a441);
+    color:#2f2a1e;border:2px solid rgba(255,255,255,.85);
+    font-family:inherit;font-size:17px;font-weight:900;line-height:1;
+    cursor:pointer;display:grid;place-items:center;
+    transition:filter .15s,transform .1s;
+    box-shadow:0 2px 8px rgba(240,192,96,.45);
+    padding:0;flex:none;
+  }
+  .quest-pill:not(.hidden){animation:questPulse 2.4s ease-in-out infinite}
+  .quest-pill:hover{filter:brightness(1.1)}
+  .quest-pill:active{transform:scale(.95)}
+  @keyframes questPulse{
+    0%,55%,100%{transform:scale(1);box-shadow:0 2px 8px rgba(240,192,96,.45)}
+    70%{transform:scale(1.12);box-shadow:0 4px 16px rgba(240,192,96,.85)}
+    85%{transform:scale(1.05);box-shadow:0 3px 12px rgba(240,192,96,.65)}
+  }
+
+  .save-indicator{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:rgba(255,255,255,.7);opacity:0;transition:opacity .4s;pointer-events:none;white-space:nowrap;user-select:none}
+  .save-indicator.on{opacity:1}
+  .save-indicator::before{content:"";width:6px;height:6px;border-radius:50%;background:#7ddc7d;box-shadow:0 0 6px rgba(125,220,125,.7)}
+
+  .settings{position:fixed;top:64px;right:18px;z-index:45;width:300px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:14px 16px 12px;box-shadow:0 24px 60px rgba(0,0,0,.4);display:none}
+  .settings.on{display:block}
+  .settings h3{margin:0 0 10px;font-family:Georgia,serif;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .settings .close{border:0;background:none;font-size:18px;line-height:1;cursor:pointer;color:var(--muted);padding:0 0 0 8px}
+  .settings .close:hover{color:var(--ink)}
+  .settings label{display:flex;align-items:center;gap:9px;font-size:13px;padding:7px 0;cursor:pointer;line-height:1.25}
+  .settings label:first-of-type{border-top:1px solid var(--line)}
+  .settings input[type=checkbox]{width:16px;height:16px;accent-color:#4a7a3c;cursor:pointer;flex:none}
+  .settings select{margin-left:auto;font-family:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--cream);color:var(--ink);padding:3px 8px;border-radius:6px;cursor:pointer}
+  .settings .note{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.35}
+  .settings .note + .note{border-top:0;padding-top:4px;margin-top:4px}
+  .settings .version b{color:var(--ink);font-weight:600}
+  .settings-buttons{display:flex;gap:6px;margin:4px 0 6px;padding-top:8px;border-top:1px solid var(--line)}
+  .settings-buttons button{flex:1;font-family:inherit;font-size:11.5px;font-weight:600;padding:7px 4px;border-radius:8px;cursor:pointer;background:var(--cream);border:1px solid var(--line);color:var(--ink)}
+  .settings-buttons button:hover{background:#ece4d2}
+  .settings-buttons button.legacy{background:linear-gradient(135deg,#f7e7c1,#ecd49b);border-color:#d9c385}
+  .settings-buttons button.legacy:hover{background:linear-gradient(135deg,#f0dcaf,#e3c989)}
+
+  .stage{position:relative;padding:0;margin:0;line-height:0}
+  .scene{position:relative;width:100%;aspect-ratio:8/5;background:#8fc4d6}
+  .scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:-moz-crisp-edges}
+  .overlay{position:absolute;inset:0;pointer-events:none}
+
+  .settings-btn{
+    position:absolute;top:12px;right:12px;width:40px;height:40px;
+    border-radius:50%;
+    background:rgba(255,255,255,.22);
+    border:1px solid rgba(255,255,255,.45);
+    color:rgba(255,255,255,.95);
+    cursor:pointer;z-index:15;display:grid;place-items:center;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    transition:background .15s,transform .1s;padding:0;
+  }
+  .settings-btn:hover{background:rgba(255,255,255,.38)}
+  .settings-btn:active{transform:scale(.94)}
+  .settings-btn:focus-visible{outline:2px solid #f0d79a;outline-offset:2px}
+
+  .quest-bubble{
+    position:absolute;transform:translate(-50%,-50%);
+    width:32px;height:32px;border-radius:50%;
+    background:linear-gradient(135deg,#f0c060,#d9a441);
+    color:#2f2a1e;border:2px solid #fff;
+    font-family:inherit;font-size:17px;font-weight:900;line-height:1;
+    cursor:pointer;display:grid;place-items:center;
+    z-index:12;pointer-events:auto;
+    box-shadow:0 4px 12px rgba(0,0,0,.45);
+    animation:questBounce 1.6s ease-in-out infinite;
+    padding:0;
+  }
+  .quest-bubble:hover{filter:brightness(1.1)}
+  @keyframes questBounce{
+    0%,55%,100%{transform:translate(-50%,-50%) scale(1)}
+    70%{transform:translate(-50%,-58%) scale(1.12)}
+    85%{transform:translate(-50%,-53%) scale(1.05)}
+  }
+
+  .act{
+    position:absolute;transform:translate(-50%,-50%);pointer-events:auto;
+    display:flex;flex-direction:column;align-items:center;gap:1px;
+    border:0;border-radius:999px;padding:4px 10px 5px;
+    background:rgba(34,30,25,.92);color:#f6f1e6;font-family:inherit;
+    font-size:clamp(8.5px,1.06vw,12.5px);font-weight:600;line-height:1.15;
+    white-space:nowrap;cursor:pointer;touch-action:manipulation;
+    box-shadow:0 2px 0 rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.18);
+    transition:background .15s ease,opacity .15s ease,transform .1s ease;
+  }
+  .act .sub{font-weight:500;font-size:.82em;opacity:.8;letter-spacing:.01em}
+  .act:hover:not(:disabled){background:#2f6b2a}
+  .act:active:not(:disabled){transform:translate(-50%,-50%) translateY(2px);box-shadow:none}
+  .act:focus-visible{outline:3px solid #f0d79a;outline-offset:2px}
+  .act:disabled{background:rgba(52,46,38,.62);opacity:.66;cursor:default}
+  .act.ready{background:var(--gold);color:#241c10;animation:glow 1.8s ease-in-out infinite}
+  .act.ready .sub{opacity:.75}
+  .act.ready:hover{background:#c9932f}
+  @keyframes glow{0%,100%{box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 0 0 rgba(240,215,154,.55)}50%{box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 0 7px rgba(240,215,154,0)}}
+  .act.tutorial{animation:tutorialRing 1.4s ease-out infinite}
+  @keyframes tutorialRing{0%{box-shadow:0 0 0 0 rgba(240,215,154,.75),0 2px 0 rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.18)}100%{box-shadow:0 0 0 16px rgba(240,215,154,0),0 2px 0 rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.18)}}
+  .tip{position:absolute;transform:translate(-50%,-100%);background:#d9a441;color:#2f2a1e;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.35);z-index:5}
+  .tip.on{opacity:1;animation:tipPulse 1.4s ease-in-out infinite}
+  .tip::after{content:"";position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#d9a441;border-bottom:0}
+  @keyframes tipPulse{0%,100%{transform:translate(-50%,-100%) scale(1)}50%{transform:translate(-50%,-108%) scale(1.06)}}
+  .float-text{position:absolute;transform:translate(-50%,0);font-size:14px;font-weight:700;color:#f0c060;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 6px rgba(0,0,0,.5);pointer-events:none;animation:floatUp 1.2s ease-out forwards;z-index:6;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .float-text.gold{color:#f0c060}
+  .float-text.wood{color:#d9b27a}
+  .float-text.rep{color:#d9a441;font-size:15px}
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,0) scale(.8)}15%{opacity:1;transform:translate(-50%,-8px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-42px) scale(1)}}
+  .particle{position:absolute;width:3px;height:3px;border-radius:50%;pointer-events:none;z-index:5;animation:particleFly .9s ease-out forwards}
+  @keyframes particleFly{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.3)}}
+  .toasts{position:fixed;top:66px;left:50%;transform:translateX(-50%);z-index:44;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;max-width:min(460px,92vw)}
+  .toast{background:var(--ink);color:var(--cream);border-radius:10px;padding:10px 18px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.5);border-left:4px solid var(--gold);text-align:center;animation:toastIn .35s ease,toastOut .4s ease 4.2s forwards}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes toastOut{to{opacity:0;transform:translateY(-8px)}}
+
+  .side{border-left:1px solid var(--line);background:var(--paper);padding:16px;display:flex;flex-direction:column;gap:12px;min-height:0;line-height:1.45;overflow-y:auto}
+  .house-card{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .house-card .lvl{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .house-card .lvl b{color:var(--ink);font-size:14px}
+  .bar{height:8px;border-radius:99px;background:#e0d5bf;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--moss);width:0%;transition:width .3s}
+  .house-card .next{margin-top:9px;font-size:12.5px;color:var(--muted)}
+  .house-card .next b{color:var(--ink)}
+  .log-title{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;gap:6px}
+  .log-toggle{border:0;background:none;color:var(--muted);font-size:10.5px;cursor:pointer;text-transform:uppercase;letter-spacing:.08em;padding:2px 4px;font-family:inherit;text-decoration:underline;text-decoration-color:rgba(122,112,96,.35)}
+  .log-toggle:hover{color:var(--ink)}
+  .log{flex:1;min-height:100px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding-right:4px;line-height:1.4}
+  .log div{font-size:12.5px;color:#443c31;padding-bottom:7px;border-bottom:1px dashed #ddd0b8}
+  .log div:last-child{border-bottom:0;padding-bottom:0}
+  .log em{font-style:normal;color:#9a8e78;font-variant-numeric:tabular-nums;margin-right:6px;font-size:11.5px}
+  .hint{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+
+  .tray{grid-column:1/-1;display:flex;align-items:stretch;gap:10px;padding:12px 16px;background:#e7ddc7;border-top:1px solid var(--line);overflow-x:auto;scrollbar-width:thin}
+  .waitbtn{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1.5px dashed #b9a985;background:transparent;color:#5c5240;border-radius:12px;padding:8px 16px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;touch-action:manipulation;white-space:nowrap}
+  .waitbtn span{font-size:10.5px;font-weight:500;opacity:.75;letter-spacing:.04em;text-transform:uppercase}
+  .waitbtn:hover:not(:disabled){background:rgba(255,255,255,.45);border-color:#8d7a55}
+  .waitbtn:disabled{opacity:.45;cursor:default}
+  .items{display:flex;gap:10px;flex:1}
+  .item{flex:1 1 0;min-width:132px;display:flex;align-items:center;gap:9px;background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:7px 11px;font-family:inherit;text-align:left;cursor:pointer;touch-action:manipulation;transition:border-color .15s,box-shadow .15s,transform .1s}
+  .item:hover:not(:disabled){border-color:var(--moss);box-shadow:0 4px 12px rgba(74,122,60,.16)}
+  .item:active:not(:disabled){transform:translateY(1px)}
+  .item:focus-visible{outline:3px solid #f0d79a;outline-offset:2px}
+  .item:disabled{cursor:default;opacity:.5}
+  .item.locked{opacity:.62;background:#ddd4be;border-color:#cbc0a8;filter:grayscale(.35)}
+  .item.locked b{color:#6d6454}
+  .item.locked i{color:#8a8173}
+  .item.locked .price{color:var(--muted);font-weight:600}
+  .item .ico{flex:none;width:30px;height:30px;border-radius:9px;background:#e7e0cd;display:grid;place-items:center}
+  .item .txt{min-width:0}
+  .item b{display:block;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+  .item i{display:block;font-style:normal;font-size:11px;color:var(--muted);white-space:nowrap}
+  .item .price{margin-left:auto;font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap}
+
+  .win,.overlay-full{position:fixed;inset:0;background:rgba(28,25,21,.82);display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .win{z-index:30}
+  .overlay-full{z-index:60}
+  .win.on,.overlay-full.on{display:flex}
+  .start-screen{z-index:70;background:radial-gradient(circle at 50% 25%,rgba(58,51,42,.95) 0%,rgba(28,25,21,.98) 70%)}
+  #confirm-reset{z-index:80}
+  #modal-achievements,#modal-records,#modal-legacy,#modal-contracts{z-index:75}
+  .start-card{background:var(--cream);border-radius:20px;padding:34px 36px 30px;max-width:460px;width:100%;text-align:center;box-shadow:0 40px 90px rgba(0,0,0,.6)}
+  .start-card h1{font-family:Georgia,serif;font-size:34px;margin:0 0 8px;color:var(--ink);line-height:1.15}
+  .start-card .tagline{color:var(--muted);font-size:14px;margin:0 0 26px;line-height:1.45}
+  .start-actions{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+  .start-actions button{border:0;border-radius:12px;padding:13px 20px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation;transition:background .15s,transform .1s}
+  .start-actions .primary{background:var(--moss);color:#fff}
+  .start-actions .primary:hover{background:#3d6631}
+  .start-actions .primary:active{transform:translateY(1px)}
+  .start-actions .secondary{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .start-actions .secondary:hover{background:#ece4d2}
+  .start-help{font-size:12.5px;color:var(--muted);line-height:1.6;padding-top:18px;border-top:1px solid var(--line);text-align:left}
+  .start-help p{margin:0 0 8px}
+  .start-help p:last-child{margin:0}
+  .start-help b{color:var(--ink);font-weight:600}
+  .start-help kbd{display:inline-block;background:#e0d5bf;border-radius:4px;padding:1px 6px;font-family:inherit;font-size:11.5px;font-weight:600;color:var(--ink);margin:0 1px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+  .modal-card{background:var(--cream);border-radius:16px;padding:26px 28px;max-width:440px;width:100%;box-shadow:0 30px 70px rgba(0,0,0,.55);text-align:center}
+  .modal-card.wide{max-width:580px;text-align:left}
+  .modal-card h3{font-family:Georgia,serif;font-size:21px;margin:0 0 10px;color:var(--ink);text-align:center}
+  .modal-card p{margin:0 0 20px;font-size:13.5px;color:#4a4438;line-height:1.5;text-align:center}
+  .modal-card .modal-close{display:block;margin:14px auto 0;border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline}
+  .modal-card .modal-close:hover{color:var(--ink)}
+  .modal-actions{display:flex;flex-direction:column;gap:8px}
+  .modal-actions button{border:1.5px solid var(--line);border-radius:10px;padding:10px 16px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;background:var(--cream);color:var(--ink);transition:background .15s}
+  .modal-actions button:hover{background:#ece4d2}
+  .modal-actions button.primary{background:var(--moss);color:#fff;border-color:var(--moss)}
+  .modal-actions button.primary:hover{background:#3d6631;border-color:#3d6631}
+  .modal-actions button.danger{background:#b8433a;color:#fff;border-color:#b8433a}
+  .modal-actions button.danger:hover{background:#9e382f;border-color:#9e382f}
+  .modal-actions button.prestige{background:linear-gradient(135deg,#d9a441,#b4802a);color:#fff;border-color:#b4802a;font-weight:700}
+  .modal-actions button.prestige:hover{background:linear-gradient(135deg,#c9932f,#a37325);border-color:#a37325}
+  .modal-actions button.prestige:disabled{background:#b0a48a;border-color:#b0a48a;opacity:.7;cursor:default}
+  .modal-actions.row{flex-direction:row}
+  .modal-actions.row button{flex:1}
+
+  .contracts-modal-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;margin-bottom:6px}
+  .contract{padding:10px 12px;background:var(--paper);border:1px solid var(--line);border-radius:10px;font-size:13px;line-height:1.4}
+  .contract.done{opacity:.6;text-decoration:line-through}
+  .contract .title{color:var(--ink);font-weight:700;margin-bottom:4px}
+  .contract .progress{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:2px}
+  .contract .progress b{color:var(--gold);font-weight:700}
+  .contracts-empty{text-align:center;color:var(--muted);padding:20px 0;font-size:13.5px}
+
+  .achievements-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;margin-bottom:6px}
+  .ach-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--paper);border:1px solid var(--line);border-radius:10px}
+  .ach-item.locked{opacity:.6}
+  .ach-item .ach-icon{flex:none;width:26px;height:26px;border-radius:50%;background:#e0d5bf;display:grid;place-items:center;font-size:13px;color:var(--muted)}
+  .ach-item.unlocked .ach-icon{background:#d9a441;color:#fff}
+  .ach-item .ach-txt{min-width:0}
+  .ach-item .ach-name{font-weight:700;font-size:13px;color:var(--ink)}
+  .ach-item .ach-desc{font-size:11.5px;color:var(--muted);margin-top:1px;line-height:1.35}
+
+  .records-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .rec-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--paper);border:1px solid var(--line);border-radius:10px;font-size:13.5px}
+  .rec-item .rec-name{color:var(--muted)}
+  .rec-item .rec-val{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+  .rec-item .rec-val.none{color:#b9b0a0;font-weight:500;font-style:italic}
+
+  .legacy-header{display:flex;align-items:center;gap:16px;padding:14px 16px;background:linear-gradient(135deg,#f9efd4,#f2e1b7);border:1px solid #e0cfa0;border-radius:12px;margin-bottom:12px}
+  .legacy-rep-big{text-align:center;min-width:90px}
+  .legacy-rep-value{font-family:Georgia,serif;font-size:38px;font-weight:700;color:var(--gold);line-height:1}
+  .legacy-rep-label{font-size:10.5px;color:#8a7540;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+  .legacy-meta{font-size:13px;color:#5e4a22;line-height:1.6}
+  .legacy-meta b{color:var(--ink);font-weight:700}
+  .legacy-prestige-box{background:linear-gradient(135deg,#f7e7c1,#ecd49b);border:1px solid #d9c385;border-radius:10px;padding:12px 14px;margin-bottom:14px;text-align:center}
+  .legacy-prestige-box .info{font-size:13px;color:#5e4a22;margin-bottom:10px}
+  .legacy-prestige-box .info b{color:#7a5230;font-weight:700}
+  .legacy-prestige-box button{border:0;border-radius:10px;padding:10px 20px;background:var(--gold);color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s}
+  .legacy-prestige-box button:hover{background:#c9932f}
+  .legacy-prestige-box button:disabled{background:#b0a48a;cursor:default;opacity:.7}
+  .perks-title{font-family:Georgia,serif;font-size:15px;font-weight:600;margin:14px 0 8px;color:var(--ink)}
+  .perks-list{display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow-y:auto;margin-bottom:12px}
+  .perk-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--paper);border:1px solid var(--line);border-radius:10px}
+  .perk-item.owned{background:#e6ead9;border-color:#bccdaa}
+  .perk-item .perk-icon{flex:none;width:28px;height:28px;border-radius:8px;background:#e0d5bf;display:grid;place-items:center;font-size:14px}
+  .perk-item.owned .perk-icon{background:var(--moss);color:#fff}
+  .perk-item .perk-txt{flex:1;min-width:0}
+  .perk-item .perk-name{font-size:13px;font-weight:700;color:var(--ink)}
+  .perk-item .perk-desc{font-size:11.5px;color:var(--muted);margin-top:1px;line-height:1.35}
+  .perk-item .perk-cost{font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .perk-item.owned .perk-cost{color:var(--moss)}
+  .perk-item button{border:1px solid var(--moss);background:var(--moss);color:#fff;border-radius:8px;padding:5px 10px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .perk-item button:hover{background:#3d6631}
+  .perk-item button:disabled{background:transparent;color:var(--muted);border-color:var(--line);cursor:default}
+
+  @media (max-width:880px){
+    body{padding:0}
+    .app{grid-template-columns:minmax(0,1fr);border-radius:0}
+    .hud{order:0}
+    .stage{order:1}
+    .tray{order:2}
+    .side{order:3;border-left:0;border-top:1px solid var(--line)}
+    .log{max-height:190px}
+    .tray{flex-wrap:wrap;overflow-x:visible}
+    .items{flex-wrap:wrap;flex:1 1 100%}
+    .item{flex:1 1 145px;min-width:0}
+    .item b,.item i,.item .price{white-space:normal}
+    .tray,.items{min-width:0;max-width:100%}
+    .waitbtn{width:100%;flex-direction:row;gap:7px;padding:7px 14px}
+    .settings{right:10px;top:58px;width:min(300px,calc(100vw - 20px))}
+    .start-card{padding:28px 22px 24px}
+    .start-card h1{font-size:28px}
+    .modal-card.wide{padding:20px 18px}
+    .legacy-header{flex-direction:column;text-align:center}
+    .legacy-meta{text-align:center}
+    .perks-list{max-height:36vh}
+    .settings-btn{width:36px;height:36px;top:8px;right:8px}
+  }
+  @media (pointer: coarse){
+    .act{font-size:13px;padding:7px 14px 8px;min-height:44px;min-width:44px}
+    .act .sub{font-size:11px}
+    .desktop-only{display:none !important}
+    .act:hover:not(:disabled){background:rgba(34,30,25,.92)}
+    .act.ready:hover{background:var(--gold)}
+    .item:hover:not(:disabled){border-color:var(--line);box-shadow:none}
+    .waitbtn:hover:not(:disabled){background:transparent;border-color:#b9a985}
+    .mobile-only{display:block}
+    .quest-bubble{width:40px;height:40px;font-size:20px}
+  }
+  @media (pointer: fine){.mobile-only{display:none !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hud">
+    <button class="quest-pill hidden" id="btn-quests-hud" type="button" aria-label="Contracts" title="Contracts">!</button>
+    <div class="turn"><span data-i18n="turn">Ход</span> <b id="stat-turn">1</b></div>
+    <div class="pill"><span data-i18n="gold">Золото</span><b id="stat-gold">0</b></div>
+    <div class="pill"><span data-i18n="wood">Дерево</span><b id="stat-wood">0</b></div>
+    <div class="pill"><span data-i18n="water">Вода</span><b id="stat-water">2/3</b></div>
+    <div class="pill" id="pill-rain"><span data-i18n="rain">Дождь</span><b id="stat-rain">—</b></div>
+    <div class="pill" id="pill-trade"><span data-i18n="trader">Торговец</span><b id="stat-trade">—</b></div>
+    <div class="pill reputation" id="pill-reputation" style="display:none" title="Legacy">
+      <span>⭐</span><b id="stat-reputation">0</b>
+    </div>
+    <span class="save-indicator" id="save-indicator" data-i18n="saved">Сохранено</span>
+    <button class="ghost icon-btn" id="btn-fullscreen" type="button" title="Fullscreen" aria-label="Fullscreen">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
+  </header>
+
+  <div class="settings" id="settings-panel" role="dialog" aria-label="Settings">
+    <h3><span data-i18n="settings">Настройки</span><button class="close" id="btn-settings-close" type="button" aria-label="Close">&times;</button></h3>
+    <label><input type="checkbox" id="opt-anim" /> <span data-i18n="opt_anim">Анимации: дым, облака, птицы</span></label>
+    <label><input type="checkbox" id="opt-sound" /> <span data-i18n="opt_sound">Звуковые эффекты</span></label>
+    <label><input type="checkbox" id="opt-music" /> <span data-i18n="opt_music">Музыка</span></label>
+    <label><input type="checkbox" id="opt-endless" /> <span data-i18n="opt_endless">Бесконечный режим</span></label>
+    <label><span data-i18n="language">Язык</span>
+      <select id="opt-lang"><option value="ru">Русский</option><option value="en">English</option></select>
+    </label>
+    <div class="settings-buttons">
+      <button type="button" id="btn-reward-ad" data-i18n="btn_reward_ad" style="display:none">Бонус за рекламу</button>
+      <button type="button" id="btn-show-achievements" data-i18n="btn_ach">Достижения</button>
+      <button type="button" id="btn-show-records" data-i18n="btn_records">Рекорды</button>
+      <button type="button" id="btn-show-legacy" class="legacy" data-i18n="btn_legacy">Наследие</button>
+    </div>
+    <p class="note" data-i18n="opt_endless_note">Бесконечный: после терема можно строить пристройки и играть дальше.</p>
+    <p class="note desktop-only" data-i18n-html="opt_keys">Клавиши: <b>1–4</b> грядки · <b>W</b> колодец · <b>C</b> рубить · <b>H</b> молоток · <b>Пробел</b> ждать · <b>Esc</b> пауза</p>
+    <p class="note version"><b data-i18n="title_short">Дом и грядки</b> · <span id="app-version"></span><br><span data-i18n="author_label">Автор</span>: SWAN</p>
+  </div>
+
+  <main class="stage">
+    <div class="scene">
+      <canvas id="scene-canvas" width="320" height="200" aria-hidden="true"></canvas>
+      <button class="settings-btn" id="btn-settings" type="button" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel" title="Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <div class="overlay">
+        <div class="tip" id="tutorial-tip" data-i18n="tutorial_water">Полей меня</div>
+        <button class="quest-bubble hidden" id="btn-quests-trader" type="button" style="left:36.25%;top:64%" aria-label="Contracts" title="Contracts">!</button>
+        <button class="act" id="btn-house" type="button" style="left:81.25%;top:12%" aria-label="Дом"></button>
+        <button class="act" id="btn-well" type="button" style="left:51.25%;top:34%" aria-label="Колодец"></button>
+        <button class="act" id="btn-tree" type="button" style="left:13.75%;top:16.8%" aria-label="Дерево"></button>
+        <button class="act" id="btn-bed-0" type="button" style="left:16.25%;top:90.4%" aria-label="Грядка 1"></button>
+        <button class="act" id="btn-bed-1" type="button" style="left:31.25%;top:90.4%" aria-label="Грядка 2"></button>
+        <button class="act" id="btn-bed-2" type="button" style="left:46.25%;top:90.4%" aria-label="Грядка 3"></button>
+        <button class="act" id="btn-bed-3" type="button" style="left:61.25%;top:90.4%" aria-label="Грядка 4"></button>
+        <button class="act" id="btn-stump-wait" type="button" style="left:91.25%;top:48%" aria-label="Ждать"></button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side">
+    <section class="house-card">
+      <div class="lvl"><b id="house-name">Сарай</b><span id="house-prog">0 / 4</span></div>
+      <div class="bar"><i id="house-bar"></i></div>
+      <div class="next" id="house-next"></div>
+    </section>
+    <section style="display:flex;flex-direction:column;min-height:0;flex:1">
+      <div class="log-title">
+        <span data-i18n="log_title">Записи</span>
+        <button class="log-toggle" id="btn-log-toggle" type="button" data-i18n="log_all">все</button>
+      </div>
+      <div class="log" id="log-list"></div>
+    </section>
+    <div class="hint" id="hint" data-i18n="hint_default">Каждое действие — один ход. Всё остальное в это время живёт само.</div>
+  </aside>
+
+  <section class="tray" aria-label="Shop">
+    <button class="waitbtn" id="btn-wait" type="button" aria-label="Ждать ход"></button>
+    <div class="items" id="tray-items"></div>
+  </section>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<div class="win" id="win">
+  <div class="card modal-card">
+    <h3 data-i18n="win_title">Терем стоит</h3>
+    <p id="win-text"></p>
+    <div class="row modal-actions" style="flex-direction:column">
+      <button id="btn-prestige-win" type="button" class="prestige">Уехать в город</button>
+      <button id="btn-endless" type="button" data-i18n="win_endless">Продолжить бесконечно</button>
+      <button id="btn-again" class="secondary" type="button" data-i18n="win_restart">Начать заново</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay-full start-screen on" id="start-screen">
+  <div class="start-card">
+    <h1 data-i18n="title">Дом и грядки</h1>
+    <p class="tagline" data-i18n="tagline">Маленькая пошаговая игра о том, как сарай становится теремом</p>
+    <div class="start-actions">
+      <button class="primary" id="btn-start-continue" type="button" data-i18n="continue">Продолжить</button>
+      <button class="secondary" id="btn-start-new" type="button" data-i18n="new_game">Новая игра</button>
+    </div>
+    <div class="start-help">
+      <p data-i18n-html="how_to_play"><b>Как играть.</b> Каждое действие — один ход. Поливай грядки, собирай урожай, покупай улучшения и строй дом.</p>
+      <p class="desktop-only" data-i18n-html="keys_hint">Клавиши: <kbd>1</kbd>–<kbd>4</kbd> грядки · <kbd>W</kbd> колодец · <kbd>C</kbd> рубить · <kbd>H</kbd> молоток · <kbd>Пробел</kbd> ждать · <kbd>Esc</kbd> пауза</p>
+      <p class="mobile-only" data-i18n="tap_hint">Нажимай на объекты и кнопки действий. Каждое действие — один ход.</p>
+    </div>
+  </div>
+</div>
+
+<div class="overlay-full" id="pause-menu">
+  <div class="modal-card">
+    <h3 data-i18n="pause">Пауза</h3>
+    <div class="modal-actions">
+      <button class="primary" id="btn-pause-resume" type="button" data-i18n="continue">Продолжить</button>
+      <button id="btn-pause-restart" type="button" data-i18n="restart">Начать заново</button>
+      <button id="btn-pause-menu" type="button" data-i18n="main_menu">Главное меню</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay-full" id="confirm-reset">
+  <div class="modal-card">
+    <h3 data-i18n="confirm_reset_title">Начать заново?</h3>
+    <p data-i18n="confirm_reset_text">Весь прогресс будет потерян — грядки, дом, золото. Это действие нельзя отменить.</p>
+    <div class="modal-actions row">
+      <button id="btn-confirm-cancel" type="button" data-i18n="cancel">Отменить</button>
+      <button class="danger" id="btn-confirm-ok" type="button" data-i18n="reset">Сбросить</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay-full" id="modal-contracts">
+  <div class="modal-card wide">
+    <h3 data-i18n="contracts_title">Контракты торговца</h3>
+    <div class="contracts-modal-list" id="contracts-modal-list"></div>
+    <button class="modal-close" type="button" data-close-modal="modal-contracts" data-i18n="close">Закрыть</button>
+  </div>
+</div>
+
+<div class="overlay-full" id="modal-achievements">
+  <div class="modal-card wide">
+    <h3 data-i18n="achievements_title">Достижения</h3>
+    <div class="achievements-list" id="achievements-list"></div>
+    <button class="modal-close" type="button" data-close-modal="modal-achievements" data-i18n="close">Закрыть</button>
+  </div>
+</div>
+
+<div class="overlay-full" id="modal-records">
+  <div class="modal-card wide">
+    <h3 data-i18n="records_title">Рекорды</h3>
+    <div class="records-list" id="records-list"></div>
+    <button class="modal-close" type="button" data-close-modal="modal-records" data-i18n="close">Закрыть</button>
+  </div>
+</div>
+
+<div class="overlay-full" id="modal-legacy">
+  <div class="modal-card wide">
+    <h3 data-i18n="legacy_title">Наследие</h3>
+    <div class="legacy-header">
+      <div class="legacy-rep-big">
+        <div class="legacy-rep-value" id="legacy-rep-value">0</div>
+        <div class="legacy-rep-label" data-i18n="legacy_rep">Репутация</div>
+      </div>
+      <div class="legacy-meta">
+        <div><span data-i18n="legacy_level">Уровень престижа</span>: <b id="legacy-level-value">0</b></div>
+        <div><span data-i18n="legacy_total">Всего заработано</span>: <b id="legacy-total-value">0</b></div>
+      </div>
+    </div>
+    <div class="legacy-prestige-box">
+      <div class="info" id="legacy-prestige-info"></div>
+      <button id="btn-prestige" type="button" data-i18n="legacy_go_city">Уехать в город</button>
+    </div>
+    <div class="perks-title" data-i18n="legacy_perks">Перки</div>
+    <div class="perks-list" id="perks-list"></div>
+    <button class="modal-close" type="button" data-close-modal="modal-legacy" data-i18n="close">Закрыть</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Версия игры — единственная точка правды. Меняешь здесь — переименуй и файл: farm vX.Y.html */
+  var VERSION = "1.5.4";
+  var AUTHOR = "SWAN";
+  var CW = 320, CH = 200, HORIZON = 58;
+
+  var GROW_STEPS = 6;
+  var RIPE_WINDOW = 2;
+  var TREE_CHOPS = 8;
+  var TREE_REGROW = 6;
+  var MAX_ITEM = 4;
+  /* Лейка живёт по своему потолку: 3 и 4 полива. Третий уровень убран — не окупался
+     (дождь и так снимает нагрузку с колодца), поэтому старый сейв подрезаем при загрузке. */
+  var CAN_MAX = 2;
+  var REWARD_AD_GOLD = 8, REWARD_AD_COOLDOWN = 10;
+  /* Имя таблицы лидеров. Должно совпадать с техническим именем в консоли разработчика. */
+  var LEADERBOARD_ID = "bestTurn";
+  var MAX_RAIN_EVERY = 30;
+  var RAIN_LENGTH = 18;
+  var TRADE_EVERY = 40;
+  var TRADE_LENGTH = 10;
+  var COOP_PRICE = 70, COOP_WOOD = 20, COOP_PERIOD = 5, COOP_INCOME = 4;
+  var MILL_PRICE = 90, MILL_WOOD = 40, MILL_PERIOD = 2, MILL_INCOME = 1;
+
+  var PERKS = [
+    { id: "p_start_gold", cost: 3, icon: "🪙" },
+    { id: "p_start_water", cost: 5, icon: "💧" },
+    { id: "p_second_bed", cost: 10, icon: "🌱" },
+    { id: "p_trader_fast", cost: 12, icon: "🎪" },
+    { id: "p_rain_fast", cost: 12, icon: "☔" },
+    { id: "p_cheap_buildings", cost: 15, icon: "🔨" },
+    { id: "p_start_axe", cost: 15, icon: "🪓" },
+    { id: "p_harvest_bonus", cost: 20, icon: "🥕" },
+    { id: "p_fast_growth", cost: 25, icon: "🌾" },
+    { id: "p_third_bed", cost: 30, icon: "🌿" },
+    { id: "p_trade_route", cost: 35, icon: "🛤️" },
+    { id: "p_auto_harvest", cost: 40, icon: "🤖" }
+  ];
+
+  var HOUSE_LEVEL_KEYS = ["shed", "hut", "stove_house", "mansion"];
+  var HOUSE_LEVELS = [
+    { key: "shed", hits: 0, gold: 0, wood: 0 },
+    { key: "hut", hits: 3, gold: 6, wood: 2 },
+    { key: "stove_house", hits: 5, gold: 11, wood: 4 },
+    { key: "mansion", hits: 8, gold: 20, wood: 6 }
+  ];
+
+  var ACHIEVEMENTS = [
+    { id: "first_harvest", check: function () { return (state.harvestedTotal || 0) >= 1; } },
+    { id: "first_chop", check: function () { return (state.choppedTotal || 0) >= 1; } },
+    { id: "first_house", check: function () { return state.house.level >= 1; } },
+    { id: "stove", check: function () { return state.house.level >= 2; } },
+    { id: "terem", check: function () { return state.house.level >= 3; } },
+    { id: "coop", check: function () { return state.buildings.coop > 0; } },
+    { id: "mill", check: function () { return state.buildings.mill > 0; } },
+    { id: "rich100", check: function () { return state.gold >= 100; } },
+    { id: "lumber50", check: function () { return state.wood >= 50; } },
+    { id: "diligent", check: function () { return state.bestHarvestStreak >= 10; } },
+    { id: "trader5", check: function () { return state.traderSales >= 5; } },
+    { id: "rain_lover", check: function () { return (state.rainHarvests || 0) >= 1; } },
+    { id: "endless", check: function () { return state.settings.endless; } },
+    { id: "contract", check: function () { return (state.contractsDone || 0) >= 1; } }
+  ];
+
+  var SAVE_KEY = "ferma-save-v1";
+  var RECORDS_KEY = "ferma-records-v1";
+  var PERMANENT_ACH_KEY = "ferma-ach-v1";
+  var META_KEY = "ferma-meta-v1";
+
+  var state, meta, records, permanentAch = {};
+  var logExpanded = false;
+  var gameStarted = false;
+  var paused = false;
+  var confirmCallback = null;
+  var saveIndicatorTimer = null;
+
+  /* Runtime-флаги: одноразовые триггеры тостов, не состояние игры */
+  var runtime = { fenceAck: 0, chickAck: 0, teremAck: 0, recordedWin: false };
+  function resetRuntime() { runtime.fenceAck = 0; runtime.chickAck = 0; runtime.teremAck = 0; runtime.recordedWin = false; }
+  function syncRuntimeFromState() {
+    runtime.fenceAck = (state.decor && state.decor.fence) ? 1 : 0;
+    runtime.chickAck = (state.decor && state.decor.chick) ? 1 : 0;
+    runtime.teremAck = state.house && state.house.level >= 3 ? 1 : 0;
+    runtime.recordedWin = !!state.won;
+  }
+
+  var I18N = {
+    ru: {
+      title: "Дом и грядки", title_short: "Дом и грядки",
+      tagline: "Маленькая пошаговая игра о том, как сарай становится теремом",
+      turn: "Ход", gold: "Золото", wood: "Дерево", water: "Вода", rain: "Дождь", trader: "Торговец", saved: "Сохранено",
+      settings: "Настройки", continue: "Продолжить", new_game: "Новая игра", restart: "Начать заново",
+      main_menu: "Главное меню", cancel: "Отменить", reset: "Сбросить", close: "Закрыть", pause: "Пауза",
+      confirm_reset_title: "Начать заново?",
+      confirm_reset_text: "Весь прогресс будет потерян — грядки, дом, золото. Это действие нельзя отменить.",
+      how_to_play: "<b>Как играть.</b> Каждое действие — один ход. Поливай грядки, собирай урожай, покупай улучшения и строй дом.",
+      keys_hint: "Клавиши: <kbd>1</kbd>–<kbd>4</kbd> грядки · <kbd>W</kbd> колодец · <kbd>C</kbd> рубить · <kbd>H</kbd> молоток · <kbd>Пробел</kbd> ждать · <kbd>Esc</kbd> пауза",
+      tap_hint: "Нажимай на объекты и кнопки действий. Каждое действие — один ход.",
+      opt_anim: "Анимации: дым, облака, птицы",
+      opt_sound: "Звуковые эффекты",
+      opt_music: "Музыка",
+      opt_endless: "Бесконечный режим",
+      opt_endless_note: "Бесконечный: после терема можно строить пристройки и играть дальше.",
+      opt_keys: "Клавиши: <b>1–4</b> грядки · <b>W</b> колодец · <b>C</b> рубить · <b>H</b> молоток · <b>Пробел</b> ждать · <b>Esc</b> пауза",
+      language: "Язык", author_label: "Автор",
+      btn_ach: "Достижения", btn_records: "Рекорды", btn_legacy: "Наследие",
+      btn_reward_ad: "Бонус за рекламу",
+      ad_done: "Спасибо за просмотр: +{n} золота",
+      ad_wait: "Следующая награда через {n} ходов",
+      ad_fail: "Реклама не загрузилась. Попробуй позже",
+      achievements_title: "Достижения", records_title: "Рекорды",
+      win_title: "Терем стоит",
+      win_endless: "Продолжить бесконечно",
+      win_restart: "Начать заново",
+      win_text: "Сарай, изба, дом с печью — и вот стоит терем. Всего {turn} ходов, {gold} золота в кармане и {wood} брёвен в поленнице.",
+      wait: "Ждать", turn1: "1 ход",
+      buy: "Купить", upgrade: "Улучшить", water_btn: "Полить", harvest: "Собрать", chop: "Рубить",
+      hammer: "Молоток", well: "Вода",
+      growing_status: "Рост {n}/{total}", growing_sub: "ждёт",
+      rotten: "Сгнило", rotten_sub: "−урожай",
+      growing_tree: "Растёт", growing_tree_sub: "ещё {n} х.",
+      need_axe: "Нужен топор", need_axe_sub: "внизу", done: "Готово",
+      plan_gold: "зол.", plan_wood: "дер.",
+      shop_bed_n: "Грядка {n}", shop_bed_n_lvl: "Грядка {n} ур.{lvl}",
+      shop_axe: "Топор", shop_axe_lvl: "Топор ур.{lvl}",
+      shop_can: "Лейка", shop_can_lvl: "Лейка ур.{lvl}",
+      shop_coop: "Курятник", shop_mill: "Ветряк",
+      desc_another_bed: "ещё одна грядка", desc_better_harvest: "урожай дороже", desc_upgrade: "улучшение",
+      desc_need_axe: "без него не рубить",
+      desc_axe_per_hit: "по {n} бревна за удар", desc_can_cap: "кол-во вёдер: {n}",
+      desc_coop: "+{n} зол. каждые {m} ходов · открывает дом с печью", desc_mill: "+{n} дерево каждые {m} хода · открывает терем",
+      locked_need_house: "нужен дом ур. {n}", locked_symbol: "🔒", nothing_to_buy: "Пока нечего купить",
+      house_shed: "Сарай", house_hut: "Изба", house_stove_house: "Дом с печью", house_mansion: "Терем",
+      house_extension: "Пристройка {n}", house_ext_suffix: "Терем · пристроек {n}", house_ready: "готово",
+      house_done_text: "Строить больше нечего. Включи бесконечный режим в настройках.",
+      house_next_text: "Дальше — <b>{name}</b>: {hits} ударов по {gold} зол. и {wood} дер.",
+      house_reason_mats: "нужно {gold} зол. и {wood} дер.",
+      house_gate_coop: "Дальше — <b>Дом с печью</b>. Но сначала поставь <b>курятник</b>: без птицы в хозяйстве печь не сложить.",
+      house_gate_mill: "Дальше — <b>Терем</b>. Но сначала поставь <b>ветряк</b>: без него брёвна не поднять.",
+      house_gate_coop_short: "нужен курятник",
+      house_gate_mill_short: "нужен ветряк",
+      hint_default: "Каждое действие — один ход. Всё остальное в это время живёт само.",
+      hint_won: "Дом достроен за {turn} ходов. Можно начать заново или продолжить.",
+      hint_trader: "У двора торговец. Он берёт урожай в полтора раза дороже — но только пока тут.",
+      hint_trade_route: "Торговый путь: торговец больше не приходит, зато урожай стоит вдвое.",
+      hint_rain: "Идёт дождь: грядки наполняются сами.",
+      hint_tutorial: "Первая грядка ждёт воды. Кликни её или нажми 1.",
+      hint_ripe: "Урожай поспел. Через два хода он пропадёт — не зевай.",
+      hint_empty_can: "Лейка пустая. Колодец рядом, а ждать можно и так.",
+      hint_buyable: "Внизу есть, на что потратить: {name} за {price} зол.",
+      hint_no_axe: "Без топора дерево не срубить. Он продаётся внизу.",
+      log_title: "Записи", log_all: "все", log_collapse: "свернуть",
+      log_continue: "Продолжаю с того места, где бросил. Ход {turn}.",
+      log_fresh_1: "Хозяйство ждёт. Поливай, собирай, строй — и так до терема.",
+      log_fresh_2: "Цель простая: поднять дом от сарая до терема.",
+      log_fresh_3: "Приехал на участок: сарай, одна вскопанная грядка, колодец и дерево. Остальное — докупать.",
+      log_water: "Полил грядку {n}. Земля потемнела.",
+      log_harvest: "Снял грядку {n}: +{coins} зол.",
+      log_harvest_trader: "Снял грядку {n} торговцу: +{coins} зол.",
+      log_full_can: "Набрал полную лейку — {cap} ведра.",
+      log_chop: "Тюкнул топором: +{gain} дер. Осталось ударов: {left}.",
+      log_fell: "Срубил +{gain} дер. Дерево повалилось, новый ствол — через {regrow} ходов.",
+      log_hammer: "Ударил молотком. {cur} из {total}.",
+      log_hammer_done: "Готово: теперь {name}.",
+      log_extension: "Возвёл пристройку.",
+      log_terem: "Терем достроен. Больше строить нечего — можно жить.",
+      log_fence: "За домом вырос плетёный забор.",
+      log_chickens: "По двору бегают две курочки.",
+      log_buy_bed: "Купил грядку {n}.", log_buy_axe: "Купил топор ур.{lvl}.", log_buy_can: "Купил лейку ур.{lvl}.",
+      log_coop: "Построил курятник. Куры будут нестись сами.",
+      log_mill: "Поставил ветряк. Теперь он пилит брёвна.",
+      log_coop_income: "Куры снесли яйца: +{n} зол.",
+      log_mill_income: "Ветряк напилил бревно: +{n} дер.",
+      log_rain_end: "Дождь кончился. Земля просыхает.",
+      log_rain_start: "Небо затянуло тучами — начался дождь.",
+      log_trader_arrive: "На хутор пришёл торговец. Успевай — он ненадолго.",
+      log_endless_on: "Терем стоит, а стройка продолжается — дальше пойдут пристройки.",
+      log_endless_toggle: "Бесконечный режим включён — стройка продолжается.",
+      log_contract_done: "Контракт торговца выполнен: +{reward} {unit}.",
+      log_auto_harvest: "Работник собрал урожай: +{coins} зол.",
+      log_prestige: "Уехал в город. Репутация: +{n}.",
+      log_perk_bought: "Куплен перк: {name}.",
+      toast_hut: "Изба готова — открылся курятник.",
+      toast_stove: "Печь есть — теперь дым из трубы.",
+      toast_mansion: "Терем достроен — можно жить припеваючи.",
+      toast_coop: "Курятник построен — куры несутся!",
+      toast_mill: "Ветряк готов — пилит брёвна!",
+      toast_achievement: "Достижение: {name}",
+      toast_contract: "Контракт выполнен! +{reward} {unit}",
+      toast_perk: "Перк куплен: {name}",
+      toast_prestige: "Добро пожаловать в город! +{n} репутации",
+      unit_gold: "зол.", unit_wood: "дер.",
+      contracts_title: "Контракты торговца",
+      contracts_none: "Сейчас нет активных контрактов",
+      contract_harvest: "Собрать {n} урожая", contract_chop: "Срубить {n} дерева",
+      contract_hammer: "Ударить молотком {n} раз", contract_water: "Полить {n} грядок",
+      contract_progress: "{p} / {t}",
+      ach_first_harvest: "Первый урожай", ach_first_harvest_desc: "Соберите первый урожай",
+      ach_first_chop: "Лесоруб", ach_first_chop_desc: "Срубите дерево",
+      ach_first_house: "Изба", ach_first_house_desc: "Постройте избу",
+      ach_stove: "Тепло", ach_stove_desc: "Доведите дом до печи",
+      ach_terem: "Терем", ach_terem_desc: "Постройте терем",
+      ach_coop: "Птицевод", ach_coop_desc: "Постройте курятник",
+      ach_mill: "Мельник", ach_mill_desc: "Постройте ветряк",
+      ach_rich100: "Богач", ach_rich100_desc: "100 золота в кармане",
+      ach_lumber50: "Дровосек", ach_lumber50_desc: "50 дерева в запасе",
+      ach_diligent: "Прилежный", ach_diligent_desc: "10 урожаев подряд без гнили",
+      ach_trader5: "Друг торговца", ach_trader5_desc: "Продайте 5 урожаев торговцу",
+      ach_rain_lover: "Дождевой", ach_rain_lover_desc: "Соберите урожай под дождём",
+      ach_endless: "Бесконечность", ach_endless_desc: "Включите бесконечный режим",
+      ach_contract: "Исполнитель", ach_contract_desc: "Выполните контракт торговца",
+      records_best_terem: "Лучший ход до терема", records_max_gold: "Максимум золота",
+      records_max_wood: "Максимум дерева", records_total_games: "Сыграно игр",
+      records_no_rot: "Лучшая серия без гнили", records_none: "нет",
+      records_units_turn: "ходов", records_units_gold: "зол.", records_units_wood: "дер.",
+      records_units_games: "шт.", records_units_streak: "шт.",
+      legacy_title: "Наследие", legacy_rep: "Репутация", legacy_level: "Уровень престижа",
+      legacy_total: "Всего заработано", legacy_go_city: "Уехать в город",
+      legacy_gain: "Вы получите <b>{n}</b> репутации. Хозяйство сгорит, но перки и репутация останутся.",
+      legacy_need_terem: "Сначала постройте терем, чтобы уехать в город.",
+      legacy_perks: "Перки", legacy_buy: "Купить", legacy_owned: "Куплено",
+      perk_p_start_gold: "Крепкий старт", perk_p_start_gold_desc: "+10 стартового золота",
+      perk_p_start_water: "Большая бочка", perk_p_start_water_desc: "+1 к максимуму воды",
+      perk_p_second_bed: "Вторая грядка", perk_p_second_bed_desc: "Вторая грядка открыта со старта",
+      perk_p_trader_fast: "Частые гости", perk_p_trader_fast_desc: "Торговец приходит раз в 30 ходов",
+      perk_p_rain_fast: "Дождливый край", perk_p_rain_fast_desc: "Дождь идёт чаще (раз в 22 хода)",
+      perk_p_cheap_buildings: "Мастер на все руки", perk_p_cheap_buildings_desc: "Курятник и ветряк на 30% дешевле",
+      perk_p_start_axe: "Отцовский топор", perk_p_start_axe_desc: "Топор в старте",
+      perk_p_harvest_bonus: "Умелый садовник", perk_p_harvest_bonus_desc: "+50% к золоту за урожай",
+      perk_p_fast_growth: "Тёплый климат", perk_p_fast_growth_desc: "Грядки созревают на 1 ход быстрее",
+      perk_p_third_bed: "Третья грядка", perk_p_third_bed_desc: "Третья грядка открыта со старта",
+      perk_p_trade_route: "Торговый путь", perk_p_trade_route_desc: "Заменяет торговца и контракты: они не приходят, урожай вдвое дороже (их достижения не выйдут)",
+      perk_p_auto_harvest: "Работник", perk_p_auto_harvest_desc: "Раз в 5 ходов сам собирает созревший урожай"
+    },
+    en: {
+      title: "House and Garden", title_short: "House and Garden",
+      tagline: "A small turn-based game about a shed becoming a mansion",
+      turn: "Turn", gold: "Gold", wood: "Wood", water: "Water", rain: "Rain", trader: "Trader", saved: "Saved",
+      settings: "Settings", continue: "Continue", new_game: "New Game", restart: "Restart",
+      main_menu: "Main Menu", cancel: "Cancel", reset: "Reset", close: "Close", pause: "Paused",
+      confirm_reset_title: "Restart?",
+      confirm_reset_text: "All progress will be lost — beds, house, gold. This action cannot be undone.",
+      how_to_play: "<b>How to play.</b> Each action is one turn. Water the beds, harvest crops, buy upgrades and build your house.",
+      keys_hint: "Keys: <kbd>1</kbd>–<kbd>4</kbd> beds · <kbd>W</kbd> well · <kbd>C</kbd> chop · <kbd>H</kbd> hammer · <kbd>Space</kbd> wait · <kbd>Esc</kbd> pause",
+      tap_hint: "Tap objects and action buttons. Each action is one turn.",
+      opt_anim: "Animations: smoke, clouds, birds",
+      opt_sound: "Sound effects",
+      opt_music: "Music",
+      opt_endless: "Endless mode",
+      opt_endless_note: "Endless: after the mansion you can build extensions and keep playing.",
+      opt_keys: "Keys: <b>1–4</b> beds · <b>W</b> well · <b>C</b> chop · <b>H</b> hammer · <b>Space</b> wait · <b>Esc</b> pause",
+      language: "Language", author_label: "Author",
+      btn_ach: "Achievements", btn_records: "Records", btn_legacy: "Legacy",
+      btn_reward_ad: "Reward an ad",
+      ad_done: "Thanks for watching: +{n} gold",
+      ad_wait: "Next reward in {n} turns",
+      ad_fail: "The ad did not load. Try later",
+      achievements_title: "Achievements", records_title: "Records",
+      win_title: "The mansion stands",
+      win_endless: "Continue endlessly",
+      win_restart: "Restart",
+      win_text: "A shed, a hut, a house with a stove — and now a mansion. Just {turn} turns, {gold} gold in your pocket and {wood} logs in the woodpile.",
+      wait: "Wait", turn1: "1 turn",
+      buy: "Buy", upgrade: "Upgrade", water_btn: "Water", harvest: "Harvest", chop: "Chop",
+      hammer: "Hammer", well: "Well",
+      growing_status: "Grow {n}/{total}", growing_sub: "waiting",
+      rotten: "Rotten", rotten_sub: "−crop",
+      growing_tree: "Growing", growing_tree_sub: "{n} turns left",
+      need_axe: "Need axe", need_axe_sub: "below", done: "Done",
+      plan_gold: "gold", plan_wood: "wood",
+      shop_bed_n: "Bed {n}", shop_bed_n_lvl: "Bed {n} lv.{lvl}",
+      shop_axe: "Axe", shop_axe_lvl: "Axe lv.{lvl}",
+      shop_can: "Watering can", shop_can_lvl: "Watering can lv.{lvl}",
+      shop_coop: "Chicken coop", shop_mill: "Windmill",
+      desc_another_bed: "another bed", desc_better_harvest: "crops sell for more", desc_upgrade: "upgrade",
+      desc_need_axe: "needed to chop",
+      desc_axe_per_hit: "{n} logs per hit", desc_can_cap: "water capacity: {n}",
+      desc_coop: "+{n} gold every {m} turns · unlocks the house with stove", desc_mill: "+{n} wood every {m} turns · unlocks the mansion",
+      locked_need_house: "need house lv. {n}", locked_symbol: "🔒", nothing_to_buy: "Nothing to buy yet",
+      house_shed: "Shed", house_hut: "Hut", house_stove_house: "House with stove", house_mansion: "Mansion",
+      house_extension: "Extension {n}", house_ext_suffix: "Mansion · extensions {n}", house_ready: "ready",
+      house_done_text: "Nothing left to build. Enable endless mode in settings.",
+      house_next_text: "Next — <b>{name}</b>: {hits} hits for {gold} gold and {wood} wood.",
+      house_reason_mats: "need {gold} gold and {wood} wood",
+      house_gate_coop: "Next is the <b>House with stove</b>. Build the <b>coop</b> first — no poultry, no stove.",
+      house_gate_mill: "Next is the <b>Mansion</b>. Build the <b>windmill</b> first — it lifts the logs.",
+      house_gate_coop_short: "need the coop",
+      house_gate_mill_short: "need the windmill",
+      hint_default: "Each action is one turn. Everything else lives on its own.",
+      hint_won: "House built in {turn} turns. You can restart or continue.",
+      hint_trader: "The trader is here. He pays 1.5× for harvest — but only while here.",
+      hint_trade_route: "Trade route: no trader comes, but crops sell for double.",
+      hint_rain: "It's raining: beds water themselves.",
+      hint_tutorial: "The first bed needs water. Click it or press 1.",
+      hint_ripe: "The crop is ripe. In two turns it will rot — don't miss it.",
+      hint_empty_can: "The can is empty. The well is nearby, or just wait.",
+      hint_buyable: "Something to buy below: {name} for {price} gold.",
+      hint_no_axe: "Can't chop without an axe. It's sold below.",
+      log_title: "Log", log_all: "all", log_collapse: "collapse",
+      log_continue: "Continuing where I left off. Turn {turn}.",
+      log_fresh_1: "The farm awaits. Water, harvest, build — all the way to the mansion.",
+      log_fresh_2: "The goal is simple: raise the house from shed to mansion.",
+      log_fresh_3: "Arrived at the plot: a shed, one dug bed, a well and a tree. The rest must be bought.",
+      log_water: "Watered bed {n}. The soil darkened.",
+      log_harvest: "Harvested bed {n}: +{coins} gold.",
+      log_harvest_trader: "Harvested bed {n} for trader: +{coins} gold.",
+      log_full_can: "Filled the can — {cap} buckets.",
+      log_chop: "Chopped: +{gain} wood. Hits left: {left}.",
+      log_fell: "Felled for +{gain} wood. Tree fell, new trunk in {regrow} turns.",
+      log_hammer: "Hammered. {cur} of {total}.",
+      log_hammer_done: "Done: now {name}.",
+      log_extension: "Built an extension.",
+      log_terem: "Mansion built. Nothing left to build — time to live.",
+      log_fence: "A wattle fence grew behind the house.",
+      log_chickens: "Two chickens are running around.",
+      log_buy_bed: "Bought bed {n}.", log_buy_axe: "Bought axe lv.{lvl}.", log_buy_can: "Bought can lv.{lvl}.",
+      log_coop: "Built the coop. Hens will lay on their own.",
+      log_mill: "Built the windmill. It cuts logs now.",
+      log_coop_income: "Hens laid eggs: +{n} gold.",
+      log_mill_income: "Mill cut a log: +{n} wood.",
+      log_rain_end: "The rain has stopped. The soil dries.",
+      log_rain_start: "The sky clouded over — rain has started.",
+      log_trader_arrive: "A trader has come to the farm. He won't stay long.",
+      log_endless_on: "The mansion stands, but the building goes on — extensions now.",
+      log_endless_toggle: "Endless mode enabled — the building continues.",
+      log_contract_done: "Trader's contract completed: +{reward} {unit}.",
+      log_auto_harvest: "Worker harvested: +{coins} gold.",
+      log_prestige: "Moved to the city. Reputation: +{n}.",
+      log_perk_bought: "Perk bought: {name}.",
+      toast_hut: "Hut ready — coop unlocked.",
+      toast_stove: "Stove built — smoke rises from the chimney.",
+      toast_mansion: "Mansion built — live happily ever after.",
+      toast_coop: "Coop built — hens lay eggs!",
+      toast_mill: "Windmill ready — cuts logs!",
+      toast_achievement: "Achievement: {name}",
+      toast_contract: "Contract completed! +{reward} {unit}",
+      toast_perk: "Perk bought: {name}",
+      toast_prestige: "Welcome to the city! +{n} reputation",
+      unit_gold: "gold", unit_wood: "wood",
+      contracts_title: "Trader's contracts",
+      contracts_none: "No active contracts right now",
+      contract_harvest: "Harvest {n} crops", contract_chop: "Chop {n} wood",
+      contract_hammer: "Hammer {n} times", contract_water: "Water {n} beds",
+      contract_progress: "{p} / {t}",
+      ach_first_harvest: "First harvest", ach_first_harvest_desc: "Harvest your first crop",
+      ach_first_chop: "Lumberjack", ach_first_chop_desc: "Fell a tree",
+      ach_first_house: "Hut", ach_first_house_desc: "Build a hut",
+      ach_stove: "Warmth", ach_stove_desc: "Upgrade to a house with stove",
+      ach_terem: "Mansion", ach_terem_desc: "Build the mansion",
+      ach_coop: "Poultryman", ach_coop_desc: "Build the coop",
+      ach_mill: "Miller", ach_mill_desc: "Build the windmill",
+      ach_rich100: "Rich", ach_rich100_desc: "100 gold in your pocket",
+      ach_lumber50: "Woodcutter", ach_lumber50_desc: "50 wood in stock",
+      ach_diligent: "Diligent", ach_diligent_desc: "10 harvests in a row without rot",
+      ach_trader5: "Trader's friend", ach_trader5_desc: "Sell 5 harvests to the trader",
+      ach_rain_lover: "Rain lover", ach_rain_lover_desc: "Harvest in the rain",
+      ach_endless: "Infinity", ach_endless_desc: "Enable endless mode",
+      ach_contract: "Contractor", ach_contract_desc: "Complete a trader's contract",
+      records_best_terem: "Best turn to mansion", records_max_gold: "Max gold",
+      records_max_wood: "Max wood", records_total_games: "Games played",
+      records_no_rot: "Best no-rot streak", records_none: "none",
+      records_units_turn: "turns", records_units_gold: "gold", records_units_wood: "wood",
+      records_units_games: "games", records_units_streak: "in a row",
+      legacy_title: "Legacy", legacy_rep: "Reputation", legacy_level: "Prestige level",
+      legacy_total: "Total earned", legacy_go_city: "Move to the city",
+      legacy_gain: "You will receive <b>{n}</b> reputation. Your farm will burn, but perks and reputation remain.",
+      legacy_need_terem: "Build the mansion first to move to the city.",
+      legacy_perks: "Perks", legacy_buy: "Buy", legacy_owned: "Owned",
+      perk_p_start_gold: "Strong start", perk_p_start_gold_desc: "+10 starting gold",
+      perk_p_start_water: "Big barrel", perk_p_start_water_desc: "+1 max water",
+      perk_p_second_bed: "Second bed", perk_p_second_bed_desc: "Second bed unlocked at start",
+      perk_p_trader_fast: "Frequent guests", perk_p_trader_fast_desc: "Trader comes every 30 turns",
+      perk_p_rain_fast: "Rainy land", perk_p_rain_fast_desc: "Rain comes more often (every 22 turns)",
+      perk_p_cheap_buildings: "Jack of all trades", perk_p_cheap_buildings_desc: "Coop and windmill 30% cheaper",
+      perk_p_start_axe: "Father's axe", perk_p_start_axe_desc: "Axe in starting kit",
+      perk_p_harvest_bonus: "Skilled gardener", perk_p_harvest_bonus_desc: "+50% gold from harvest",
+      perk_p_fast_growth: "Warm climate", perk_p_fast_growth_desc: "Crops ripen 1 turn faster",
+      perk_p_third_bed: "Third bed", perk_p_third_bed_desc: "Third bed unlocked at start",
+      perk_p_trade_route: "Trade route", perk_p_trade_route_desc: "Replaces the trader and contracts: neither comes, crops sell for double (their achievements won't unlock)",
+      perk_p_auto_harvest: "Worker", perk_p_auto_harvest_desc: "Every 5 turns auto-harvests one ripe crop"
+    }
+  };
+
+  var lang = "ru";
+  function t(key, vars) {
+    var s = (I18N[lang] && I18N[lang][key]) || I18N.ru[key] || key;
+    if (vars) {
+      for (var k in vars) {
+        if (Object.prototype.hasOwnProperty.call(vars, k)) s = s.split("{" + k + "}").join(vars[k]);
+      }
+    }
+    return s;
+  }
+  function houseName(level) {
+    if (level < HOUSE_LEVEL_KEYS.length) return t("house_" + HOUSE_LEVEL_KEYS[level]);
+    return t("house_extension", { n: level - HOUSE_LEVEL_KEYS.length + 1 });
+  }
+
+  function hasPerk(id) { return !!(meta && meta.perks && meta.perks[id]); }
+  function applyBonuses() {
+    if (!state) return;
+    var tradeRoute = hasPerk("p_trade_route");
+    state._bonuses = {
+      harvestMult: tradeRoute ? 2 : (hasPerk("p_harvest_bonus") ? 1.5 : 1),
+      growthThreshold: hasPerk("p_fast_growth") ? (GROW_STEPS - 1) : GROW_STEPS,
+      extraWater: hasPerk("p_start_water") ? 1 : 0,
+      cheapBuildings: hasPerk("p_cheap_buildings"),
+      autoHarvest: hasPerk("p_auto_harvest"),
+      rainEvery: hasPerk("p_rain_fast") ? 22 : MAX_RAIN_EVERY,
+      tradeEvery: hasPerk("p_trader_fast") ? 30 : TRADE_EVERY,
+      tradeRoute: tradeRoute
+    };
+  }
+
+  function canCap(level) {
+    var base = 2 + level;
+    if (state && state._bonuses && state._bonuses.extraWater) base += state._bonuses.extraWater;
+    return base;
+  }
+  function chopYield(level) { return level; }
+  function bedGoldLevel(level) {
+    var base = 1 + level;
+    var mult = (state && state._bonuses && state._bonuses.harvestMult) || 1;
+    return Math.round(base * mult);
+  }
+  function itemCeiling() { return state.house.level + 1; }
+  function axePrice(to) { return 4 + (to - 1) * 9; }
+  function canPrice(to) { return (to - 1) * 10; }
+  function bedOwnPrice(i) { return [0, 6, 10, 16][i]; }
+  function bedPrice(i, to) { return bedOwnPrice(i) + (to - 1) * 7; }
+  function coopPrice() { var b = COOP_PRICE; if (state && state._bonuses && state._bonuses.cheapBuildings) b = Math.round(b * 0.7); return b; }
+  function coopWoodCost() { var b = COOP_WOOD; if (state && state._bonuses && state._bonuses.cheapBuildings) b = Math.round(b * 0.7); return b; }
+  function millPrice() { var b = MILL_PRICE; if (state && state._bonuses && state._bonuses.cheapBuildings) b = Math.round(b * 0.7); return b; }
+  function millWoodCost() { var b = MILL_WOOD; if (state && state._bonuses && state._bonuses.cheapBuildings) b = Math.round(b * 0.7); return b; }
+
+  function loadMeta() {
+    try {
+      var raw = localStorage.getItem(META_KEY);
+      if (!raw) return { reputation: 0, totalReputation: 0, prestigeLevel: 0, perks: {} };
+      var m = JSON.parse(raw);
+      return {
+        reputation: typeof m.reputation === "number" ? m.reputation : 0,
+        totalReputation: typeof m.totalReputation === "number" ? m.totalReputation : 0,
+        prestigeLevel: typeof m.prestigeLevel === "number" ? m.prestigeLevel : 0,
+        perks: (m.perks && typeof m.perks === "object") ? m.perks : {}
+      };
+    } catch (e) { return { reputation: 0, totalReputation: 0, prestigeLevel: 0, perks: {} }; }
+  }
+  function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {} }
+
+  function loadRecords() {
+    try {
+      var raw = localStorage.getItem(RECORDS_KEY);
+      if (!raw) return { bestTeremTurn: null, maxGold: 0, maxWood: 0, totalGames: 0, bestNoRot: 0 };
+      var r = JSON.parse(raw);
+      return {
+        bestTeremTurn: (typeof r.bestTeremTurn === "number") ? r.bestTeremTurn : null,
+        maxGold: r.maxGold || 0, maxWood: r.maxWood || 0,
+        totalGames: r.totalGames || 0, bestNoRot: r.bestNoRot || 0
+      };
+    } catch (e) { return { bestTeremTurn: null, maxGold: 0, maxWood: 0, totalGames: 0, bestNoRot: 0 }; }
+  }
+  var lastRecordsJSON = null;
+  function saveRecords(r) {
+    try {
+      var s = JSON.stringify(r);
+      if (s === lastRecordsJSON) return;
+      lastRecordsJSON = s;
+      localStorage.setItem(RECORDS_KEY, s);
+    } catch (e) {}
+  }
+  function loadPermanentAch() { try { var raw = localStorage.getItem(PERMANENT_ACH_KEY); return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; } }
+  function savePermanentAch(a) { try { localStorage.setItem(PERMANENT_ACH_KEY, JSON.stringify(a)); } catch (e) {} }
+
+  function calcReputation() {
+    if (!state) return 0;
+    var turn = state.turn;
+    var speedBonus = 0;
+    if (turn <= 80) speedBonus = 20;
+    else if (turn <= 120) speedBonus = 12;
+    else if (turn <= 180) speedBonus = 6;
+    else if (turn <= 250) speedBonus = 2;
+    var achCount = 0;
+    for (var k in state.achievements) {
+      if (Object.prototype.hasOwnProperty.call(state.achievements, k) && state.achievements[k]) achCount++;
+    }
+    return Math.max(2, speedBonus + Math.floor(achCount / 3));
+  }
+
+  function fresh() {
+    var bedsOwned = [1, hasPerk("p_second_bed") ? 1 : 0, hasPerk("p_third_bed") ? 1 : 0, 0];
+    return {
+      turn: 1,
+      gold: hasPerk("p_start_gold") ? 10 : 0,
+      wood: 0,
+      water: 3,
+      axe: hasPerk("p_start_axe") ? 1 : 0,
+      can: 1,
+      bedsOwned: bedsOwned,
+      beds: [0, 1, 2, 3].map(function () { return { status: "dry", growth: 0, ripe: 0 }; }),
+      tree: { chops: TREE_CHOPS, regrow: 0 },
+      house: { level: 0, sub: 0 },
+      decor: { fence: 0, chick: 0 },
+      buildings: { coop: 0, mill: 0 },
+      coopTimer: 0,
+      millTimer: 0,
+      autoTimer: 0,
+      tutorial: true,
+      weather: { rain: 0, rainCooldown: 0, tradeTimer: TRADE_EVERY - 5, trade: 0 },
+      contracts: [],
+      achievements: {},
+      harvestStreak: 0,
+      bestHarvestStreak: 0,
+      traderSales: 0,
+      harvestedTotal: 0,
+      choppedTotal: 0,
+      rainHarvests: 0,
+      contractsDone: 0,
+      log: [],
+      won: false,
+      settings: { anim: true, endless: false, sound: false, music: false, lang: "ru" }
+    };
+  }
+
+  function bedOwned(i) { return state.bedsOwned[i] >= 1; }
+
+  function push(text) {
+    state.log.unshift({ turn: state.turn, text: text });
+    if (state.log.length > 40) state.log.length = 40;
+  }
+  function toast(text) {
+    var box = document.getElementById("toasts");
+    if (!box) return;
+    var el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = text;
+    box.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 5000);
+  }
+  function floatText(text, xPct, yPct, cls) {
+    var ov = document.querySelector(".overlay");
+    if (!ov) return;
+    var el = document.createElement("div");
+    el.className = "float-text " + (cls || "gold");
+    el.textContent = text;
+    el.style.left = xPct + "%";
+    el.style.top = yPct + "%";
+    ov.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1400);
+  }
+  function spawnParticles(xPct, yPct, count, color, spread) {
+    var ov = document.querySelector(".overlay");
+    if (!ov) return;
+    spread = spread || 30;
+    for (var i = 0; i < count; i++) {
+      var el = document.createElement("div");
+      el.className = "particle";
+      el.style.left = xPct + "%";
+      el.style.top = yPct + "%";
+      el.style.background = color;
+      var dx = (Math.random() - 0.5) * spread * 2;
+      var dy = -Math.random() * spread - 6;
+      el.style.setProperty("--dx", dx + "px");
+      el.style.setProperty("--dy", dy + "px");
+      el.style.animationDelay = (Math.random() * 0.12) + "s";
+      el.style.width = (2 + Math.random() * 2) + "px";
+      el.style.height = el.style.width;
+      ov.appendChild(el);
+      setTimeout((function (node) { return function () { if (node.parentNode) node.parentNode.removeChild(node); }; })(el), 1100);
+    }
+  }
+
+  function generateContracts(n) {
+    var pool = [], k;
+    k = 3 + Math.floor(Math.random() * 3);
+    pool.push({ id: "h" + Math.random(), type: "harvest", target: k, progress: 0, reward: k * 4, rewardType: "gold", done: false });
+    k = 4 + Math.floor(Math.random() * 4);
+    pool.push({ id: "c" + Math.random(), type: "chop", target: k, progress: 0, reward: k * 2, rewardType: "gold", done: false });
+    k = 2 + Math.floor(Math.random() * 3);
+    pool.push({ id: "hm" + Math.random(), type: "hammer", target: k, progress: 0, reward: k * 5, rewardType: "gold", done: false });
+    k = 4 + Math.floor(Math.random() * 4);
+    pool.push({ id: "w" + Math.random(), type: "water", target: k, progress: 0, reward: Math.round(k * 1.2), rewardType: "wood", done: false });
+    pool = pool.sort(function () { return Math.random() - 0.5; }).slice(0, n);
+    return pool;
+  }
+  function progressContracts(type) {
+    if (!state.contracts || !state.contracts.length) return;
+    state.contracts.forEach(function (c) {
+      if (c.type === type && !c.done) {
+        c.progress++;
+        if (c.progress >= c.target) {
+          c.done = true;
+          if (c.rewardType === "gold") state.gold += c.reward;
+          else if (c.rewardType === "wood") state.wood += c.reward;
+          var u = c.rewardType === "gold" ? t("unit_gold") : t("unit_wood");
+          toast(t("toast_contract", { reward: c.reward, unit: u }));
+          push(t("log_contract_done", { reward: c.reward, unit: u }));
+          sound("contract");
+          state.contractsDone = (state.contractsDone || 0) + 1;
+        }
+      }
+    });
+  }
+
+  function advance() {
+    state.turn++;
+    var rainEvery = (state._bonuses && state._bonuses.rainEvery) || MAX_RAIN_EVERY;
+    if (state.weather.rain > 0) {
+      state.weather.rain--;
+      if (state.weather.rain === 0) {
+        push(t("log_rain_end"));
+        state.weather.rainCooldown = rainEvery;
+      }
+    } else if (state.weather.rainCooldown > 0) {
+      state.weather.rainCooldown--;
+      if (state.weather.rainCooldown === 0) {
+        state.weather.rain = RAIN_LENGTH;
+        push(t("log_rain_start"));
+      }
+    } else {
+      state.weather.rainCooldown = rainEvery - 1;
+    }
+    var rain = state.weather.rain > 0;
+    var tradeEvery = (state._bonuses && state._bonuses.tradeEvery) || TRADE_EVERY;
+    var tradeRoute = !!(state._bonuses && state._bonuses.tradeRoute);
+    if (tradeRoute) {
+      state.weather.trade = 0;
+      if (state.contracts && state.contracts.length) state.contracts = [];
+    } else if (state.weather.trade > 0) {
+      state.weather.trade--;
+      if (state.weather.trade === 0) state.contracts = [];
+    } else {
+      state.weather.tradeTimer--;
+      if (state.weather.tradeTimer <= 0) {
+        state.weather.trade = TRADE_LENGTH;
+        state.weather.tradeTimer = tradeEvery;
+        state.contracts = generateContracts(3);
+        push(t("log_trader_arrive"));
+        sound("trader");
+      }
+    }
+    var threshold = (state._bonuses && state._bonuses.growthThreshold) || GROW_STEPS;
+    state.beds.forEach(function (b) {
+      if (rain && b.status === "dry") { b.status = "growing"; b.growth = 1; }
+      if (b.status === "growing") {
+        b.growth++;
+        if (b.growth >= threshold) { b.status = "ripe"; b.ripe = 0; }
+      } else if (b.status === "ripe") {
+        b.ripe++;
+        if (b.ripe >= RIPE_WINDOW) { b.status = "rot"; state.harvestStreak = 0; }
+      } else if (b.status === "rot") {
+        b.status = "dry"; b.growth = 0; b.ripe = 0;
+      }
+    });
+    if (state.buildings.coop > 0) {
+      state.coopTimer++;
+      if (state.coopTimer >= COOP_PERIOD) {
+        state.coopTimer = 0;
+        state.gold += COOP_INCOME;
+        push(t("log_coop_income", { n: COOP_INCOME }));
+        floatText("+" + COOP_INCOME + " " + t("unit_gold"), 305 / CW * 100, 132 / CH * 100, "gold");
+      }
+    }
+    if (state.buildings.mill > 0) {
+      state.millTimer++;
+      if (state.millTimer >= MILL_PERIOD) {
+        state.millTimer = 0;
+        state.wood += MILL_INCOME;
+        push(t("log_mill_income", { n: MILL_INCOME }));
+        floatText("+" + MILL_INCOME + " " + t("unit_wood"), MILL_AT.x / CW * 100, (MILL_AT.y - 62) / CH * 100, "wood");
+      }
+    }
+    if (state._bonuses && state._bonuses.autoHarvest) {
+      state.autoTimer = (state.autoTimer || 0) + 1;
+      if (state.autoTimer >= 5) {
+        state.autoTimer = 0;
+        for (var ai = 0; ai < state.beds.length; ai++) {
+          if (state.beds[ai].status === "ripe" && bedOwned(ai)) {
+            collectFromBed(ai, true);
+            break;
+          }
+        }
+      }
+    }
+    if (state.tree.regrow > 0) {
+      state.tree.regrow--;
+      if (state.tree.regrow === 0) state.tree.chops = TREE_CHOPS;
+    }
+    updateRecords();
+    checkAchievements();
+    saveGame();
+  }
+
+  function actWater(i) {
+    var b = state.beds[i];
+    if (state.won || !bedOwned(i) || b.status !== "dry" || state.water < 1) return;
+    state.water--;
+    b.status = "growing";
+    b.growth = 0;
+    b.ripe = 0;
+    if (state.tutorial) state.tutorial = false;
+    push(t("log_water", { n: i + 1 }));
+    sendFarmer(SPOT.bed[i], "can");
+    sound("plant");
+    spawnParticles(BED_POS[i].x / CW * 100, (BED_POS[i].y - 6) / CH * 100, 6, "#6db8d9", 18);
+    progressContracts("water");
+    advance();
+    render();
+  }
+
+  function collectFromBed(i, isAuto) {
+    var b = state.beds[i];
+    if (b.status !== "ripe") return false;
+    var coins = bedGoldLevel(state.bedsOwned[i]);
+    var underTrader = state.weather.trade > 0;
+    if (underTrader) { coins = Math.round(coins * 1.5); state.traderSales++; }
+    state.gold += coins;
+    if (isAuto) push(t("log_auto_harvest", { coins: coins }));
+    else if (underTrader) push(t("log_harvest_trader", { n: i + 1, coins: coins }));
+    else push(t("log_harvest", { n: i + 1, coins: coins }));
+    b.status = "dry";
+    b.growth = 0;
+    b.ripe = 0;
+    state.harvestStreak++;
+    if (state.harvestStreak > state.bestHarvestStreak) state.bestHarvestStreak = state.harvestStreak;
+    state.harvestedTotal = (state.harvestedTotal || 0) + 1;
+    if (state.weather.rain > 0) state.rainHarvests = (state.rainHarvests || 0) + 1;
+    floatText("+" + coins + " " + t("unit_gold"), BED_POS[i].x / CW * 100, (BED_POS[i].y - 12) / CH * 100, "gold");
+    spawnParticles(BED_POS[i].x / CW * 100, (BED_POS[i].y - 10) / CH * 100, 10, "#f0c060", 26);
+    sound("coin");
+    progressContracts("harvest");
+    return true;
+  }
+
+  function actHarvest(i) {
+    if (state.won || !bedOwned(i)) return;
+    if (!collectFromBed(i, false)) return;
+    sendFarmer(SPOT.bed[i], "basket");
+    advance();
+    render();
+  }
+
+  function bedClick(i) {
+    var b = state.beds[i];
+    if (state.bedsOwned[i] === 0) {
+      var it = shopList().filter(function (s) { return s.kind === "bed" && s.index === i; })[0];
+      if (it && !it.lockedMax) buy(it);
+      return;
+    }
+    if (b.status === "dry") actWater(i);
+    else if (b.status === "ripe") actHarvest(i);
+  }
+
+  function buy(item) {
+    if (state.won || item.price == null || state.gold < item.price || item.lockedMax) return;
+    if (item.woodPrice && state.wood < item.woodPrice) return;
+    if (item.kind === "bed" && (state.bedsOwned[item.index] >= itemCeiling() || state.bedsOwned[item.index] >= item.setTo)) return;
+    if (item.kind === "axe" && (state.axe >= itemCeiling() || state.axe >= item.setTo)) return;
+    if (item.kind === "can" && (state.can >= CAN_MAX || state.can >= itemCeiling() || state.can >= item.setTo)) return;
+    state.gold -= item.price;
+    if (item.woodPrice) state.wood -= item.woodPrice;
+    if (item.kind === "bed") { state.bedsOwned[item.index] = item.setTo || 1; push(t("log_buy_bed", { n: item.index + 1 })); }
+    else if (item.kind === "axe") { state.axe = item.setTo || 1; push(t("log_buy_axe", { lvl: state.axe })); }
+    else if (item.kind === "can") { state.can = item.setTo || 1; state.water = canCap(state.can); push(t("log_buy_can", { lvl: state.can })); }
+    else if (item.kind === "coop") { state.buildings.coop = 1; state.coopTimer = 0; push(t("log_coop")); toast(t("toast_coop")); }
+    else if (item.kind === "mill") { state.buildings.mill = 1; state.millTimer = 0; push(t("log_mill")); toast(t("toast_mill")); }
+    sendFarmer(item.kind === "bed" ? SPOT.bed[item.index] : SPOT.stump, "none", true);
+    sound("buy");
+    spawnParticles(50, 40, 8, "#7ddc7d", 22);
+    advance();
+    render();
+  }
+
+  function actWait() {
+    if (state.won) return;
+    if (state.weather && state.weather.rain > 0) {
+      // под дождём ждём в доме
+      sendFarmer(SPOT.house, "none", true, true);
+    } else {
+      sendFarmer(SPOT.stump, "none", true, false);
+    }
+    advance();
+    render();
+  }
+
+  function actWell() {
+    var cap = canCap(state.can);
+    if (state.won || state.water >= cap) return;
+    state.water = cap;
+    push(t("log_full_can", { cap: cap }));
+    sendFarmer(SPOT.well, "can");
+    sound("well");
+    spawnParticles(WELL_AT.x / CW * 100, (WELL_AT.y - 20) / CH * 100, 8, "#8fc4d6", 22);
+    advance();
+    render();
+  }
+
+  function actChop() {
+    var tr = state.tree;
+    if (state.won || state.axe < 1 || tr.regrow > 0 || tr.chops <= 0) return;
+    var gain = chopYield(state.axe);
+    tr.chops--;
+    state.wood += gain;
+    state.choppedTotal = (state.choppedTotal || 0) + 1;
+    floatText("+" + gain + " " + t("unit_wood"), TREE_AT.x / CW * 100, (TREE_AT.y - 20) / CH * 100, "wood");
+    spawnParticles(TREE_AT.x / CW * 100, (TREE_AT.y - 25) / CH * 100, 9, "#a9743f", 24);
+    sendFarmer(SPOT.tree, "axe");
+    sound("axe");
+    if (tr.chops === 0) { tr.regrow = TREE_REGROW; push(t("log_fell", { gain: gain, regrow: TREE_REGROW })); }
+    else { push(t("log_chop", { gain: gain, left: tr.chops })); }
+    progressContracts("chop");
+    advance();
+    render();
+  }
+
+  /* ── Звук ──────────────────────────── */
+  var audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  }
+  function playTone(freq, start, dur, gain, type) {
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    osc.type = type || "square";
+    osc.frequency.setValueAtTime(freq, start);
+    g.gain.setValueAtTime(gain, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(start); osc.stop(start + dur);
+  }
+  function sound(kind) {
+    if (!state || !state.settings || !state.settings.sound) return;
+    try {
+      ensureAudio();
+      var t0 = audioCtx.currentTime;
+      if (kind === "axe") playTone(150, t0, 0.07, 0.08, "square");
+      else if (kind === "well") playTone(420, t0, 0.12, 0.08, "sine");
+      else if (kind === "plant") playTone(320, t0, 0.09, 0.06, "sine");
+      else if (kind === "coin") { playTone(920, t0, 0.06, 0.07, "square"); playTone(1240, t0 + 0.04, 0.05, 0.05, "square"); }
+      else if (kind === "buy") playTone(660, t0, 0.08, 0.08, "square");
+      else if (kind === "hammer") playTone(120, t0, 0.09, 0.09, "square");
+      else if (kind === "achievement") { playTone(660, t0, 0.12, 0.07, "sine"); playTone(880, t0 + 0.1, 0.12, 0.07, "sine"); playTone(1320, t0 + 0.2, 0.18, 0.08, "sine"); }
+      else if (kind === "contract") { playTone(540, t0, 0.1, 0.08, "sine"); playTone(810, t0 + 0.08, 0.16, 0.08, "sine"); }
+      else if (kind === "trader") { playTone(880, t0, 0.14, 0.06, "sine"); playTone(660, t0 + 0.12, 0.2, 0.05, "sine"); }
+      else if (kind === "error") playTone(140, t0, 0.14, 0.07, "sawtooth");
+    } catch (e) {}
+  }
+
+  /* ── Музыка (генеративный луп на пентатонике A-минор) ── */
+  var musicCtx = null, musicTimer = null, musicGain = null;
+  var musicNotes = [440, 523.25, 587.33, 659.25, 783.99, 880, 783.99, 659.25, 587.33, 523.25];
+  var musicIdx = 0;
+  function musicStart() {
+    if (!state || !state.settings || !state.settings.music) return;
+    try {
+      if (!musicCtx) musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (musicCtx.state === "suspended") musicCtx.resume();
+      if (!musicGain) {
+        musicGain = musicCtx.createGain();
+        musicGain.gain.setValueAtTime(0, musicCtx.currentTime);
+        musicGain.gain.linearRampToValueAtTime(0.04, musicCtx.currentTime + 2);
+        musicGain.connect(musicCtx.destination);
+      }
+      if (musicTimer) return;
+      musicTimer = setInterval(musicTick, 1800);
+      musicTick();
+    } catch (e) {}
+  }
+  function musicTick() {
+    if (!musicCtx || !musicGain || !state || !state.settings.music) return;
+    try {
+      var now = musicCtx.currentTime;
+      var freq = musicNotes[musicIdx % musicNotes.length];
+      var osc = musicCtx.createOscillator();
+      var g = musicCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(0.5, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 1.7);
+      osc.connect(g);
+      g.connect(musicGain);
+      osc.start(now);
+      osc.stop(now + 1.8);
+      musicIdx++;
+    } catch (e) {}
+  }
+  function musicStop() {
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+    if (musicGain) {
+      try { musicGain.disconnect(); } catch (e) {}
+      musicGain = null;
+    }
+  }
+  function musicToggle(on) { if (on) musicStart(); else musicStop(); }
+
+  function nextUpgrade() {
+    var lvl = state.house.level;
+    if (lvl < HOUSE_LEVELS.length - 1) {
+      var nxt = HOUSE_LEVELS[lvl + 1];
+      var gate = lvl === 1 ? "coop" : (lvl === 2 ? "mill" : null);
+      return { key: nxt.key, name: houseName(lvl + 1), nextClass: true, needBuilding: gate, totalHits: nxt.hits, hitsDone: state.house.sub, gold: nxt.gold, wood: nxt.wood };
+    }
+    if (!state.settings || !state.settings.endless) return null;
+    var n = lvl - (HOUSE_LEVELS.length - 1) + 1;
+    return { name: t("house_extension", { n: n }), nextClass: false, totalHits: 8, hitsDone: state.house.sub, gold: 12 + 5 * n, wood: 4 + n };
+  }
+  function actHammer() {
+    var u = nextUpgrade();
+    if (state.won || !u) return;
+    if (u.needBuilding && !state.buildings[u.needBuilding]) return;
+    if (state.gold < u.gold || state.wood < u.wood) return;
+    state.gold -= u.gold;
+    state.wood -= u.wood;
+    state.house.sub++;
+    sendFarmer(SPOT.house, "hammer");
+    sound("hammer");
+    spawnParticles(HOUSE_AT.x / CW * 100, (HOUSE_AT.y - 20) / CH * 100, 7, "#a89b88", 22);
+    if (state.house.sub >= u.totalHits) {
+      if (u.nextClass) {
+        var oldClass = state.house.level;
+        state.house.level++;
+        state.house.sub = 0;
+        push(t("log_hammer_done", { name: houseName(oldClass + 1) }));
+        maybeUnlockDecoration(oldClass + 1);
+      } else {
+        var app = oldAppIdx();
+        state.house.level = HOUSE_LEVELS.length - 1 + app + 1;
+        state.house.sub = 0;
+        push(t("log_extension"));
+      }
+      if (state.house.level >= HOUSE_LEVELS.length - 1 && !state.settings.endless) {
+        state.won = true;
+        push(t("log_terem"));
+      }
+    } else {
+      push(t("log_hammer", { cur: state.house.sub, total: u.totalHits }));
+    }
+    progressContracts("hammer");
+    advance();
+    render();
+  }
+  function oldAppIdx() { return Math.max(0, state.house.level - (HOUSE_LEVELS.length - 1)); }
+  function maybeUnlockDecoration(level) {
+    if (state.house.level >= 1) state.decor.fence = 1;
+    if (state.house.level >= 2) state.decor.chick = 1;
+    if (state.house.level >= 1 && !runtime.fenceAck) { runtime.fenceAck = 1; push(t("log_fence")); toast(t("toast_hut")); }
+    if (state.house.level >= 2 && !runtime.chickAck) { runtime.chickAck = 1; push(t("log_chickens")); toast(t("toast_stove")); }
+    if (state.house.level >= 3 && !runtime.teremAck) { runtime.teremAck = 1; toast(t("toast_mansion")); }
+  }
+
+  function shopList() {
+    var out = [], i, L = itemCeiling();
+    var bedLockedShown = false;
+    for (i = 0; i < 4; i++) {
+      var cur = state.bedsOwned[i];
+      if (cur === 0) {
+        out.push({ id: "bed" + i, kind: "bed", index: i, setTo: 1, price: bedOwnPrice(i), name: t("shop_bed_n", { n: i + 1 }), desc: t("desc_another_bed"), lockedMax: false });
+      } else if (cur < MAX_ITEM) {
+        var nm = t("shop_bed_n_lvl", { n: i + 1, lvl: cur + 1 });
+        if (cur < L) out.push({ id: "bed" + i + "-u", kind: "bed", index: i, setTo: cur + 1, price: bedPrice(i, cur + 1), name: nm, desc: t("desc_better_harvest"), lockedMax: false });
+        else if (!bedLockedShown) { bedLockedShown = true; out.push({ id: "bed" + i + "-locked", kind: "bed", index: i, setTo: cur + 1, price: bedPrice(i, cur + 1), name: nm, desc: t("desc_upgrade"), lockedMax: true, lockedReason: t("locked_need_house", { n: cur }) }); }
+      }
+    }
+    if (state.axe === 0) {
+      out.push({ id: "axe", kind: "axe", setTo: 1, price: axePrice(1), name: t("shop_axe"), desc: t("desc_need_axe"), lockedMax: false });
+    } else if (state.axe < MAX_ITEM) {
+      var axeNm = t("shop_axe_lvl", { lvl: state.axe + 1 });
+      if (state.axe < L) out.push({ id: "axe", kind: "axe", setTo: state.axe + 1, price: axePrice(state.axe + 1), name: axeNm, desc: t("desc_axe_per_hit", { n: chopYield(state.axe + 1) }), lockedMax: false });
+      else out.push({ id: "axe", kind: "axe", setTo: state.axe + 1, price: axePrice(state.axe + 1), name: axeNm, desc: t("desc_upgrade"), lockedMax: true, lockedReason: t("locked_need_house", { n: state.axe }) });
+    }
+    if (state.can < CAN_MAX) {
+      var canNm = t("shop_can_lvl", { lvl: state.can + 1 });
+      if (state.can < L) out.push({ id: "can", kind: "can", setTo: state.can + 1, price: canPrice(state.can + 1), name: canNm, desc: t("desc_can_cap", { n: canCap(state.can + 1) }), lockedMax: false });
+      else out.push({ id: "can", kind: "can", setTo: state.can + 1, price: canPrice(state.can + 1), name: canNm, desc: t("desc_upgrade"), lockedMax: true, lockedReason: t("locked_need_house", { n: state.can }) });
+    }
+    if (!state.buildings.coop) {
+      out.push({ id: "coop", kind: "coop", price: coopPrice(), woodPrice: coopWoodCost(), name: t("shop_coop"), desc: t("desc_coop", { n: COOP_INCOME, m: COOP_PERIOD }), lockedMax: state.house.level < 1, lockedReason: t("locked_need_house", { n: 1 }) });
+    }
+    if (!state.buildings.mill) {
+      out.push({ id: "mill", kind: "mill", price: millPrice(), woodPrice: millWoodCost(), name: t("shop_mill"), desc: t("desc_mill", { n: MILL_INCOME, m: MILL_PERIOD }), lockedMax: state.house.level < 2, lockedReason: t("locked_need_house", { n: 2 }) });
+    }
+    return out;
+  }
+
+  /* ── Drawing ──────────────────────── */
+  var el = {};
+  var ctx = null, bgCanvas = null, shadowCanvas = null, shadowCtx = null;
+  var C = {
+    sky1:"#7fb9d0",sky2:"#b9d8d8",sky3:"#e9efd8",sun:"#f7dc9b",sunLight:"#fdf0c8",cloud:"#f4f8f2",
+    hillFar:"#9cb68a",hillNear:"#86a573",grass1:"#8eae64",grass2:"#78995a",grass3:"#5b7a41",
+    path:"#c3ae84",pathDark:"#a9946c",soil:"#5e4531",soilEdge:"#3f2c1e",soilDry:"#7a5b42",soilLocked:"#6a5b47",
+    wood:"#a9743f",woodDark:"#7a5230",woodLight:"#c08d54",wall:"#d3a973",wallDark:"#a8804f",wallSide:"#c0925f",
+    roof:"#8d5b3f",roofDark:"#6b4531",roofSide:"#75492f",stone:"#a89b88",stoneDark:"#7b7060",stoneLight:"#c1b6a3",
+    leaf:"#4f7a3f",leafLight:"#65974e",leafDark:"#3b6030",skin:"#e0b68c",shirt:"#5a7b52",shirtDark:"#456340",
+    pants:"#424b56",boot:"#4a3a2c",hat:"#d8b465",hatDark:"#bd9950",dark:"#2f2a1e",glass:"#a9ccd1",glassDark:"#8fb6bd"
+  };
+  var HOUSE_AT = { x: 238, y: 96 };
+  var WELL_AT = { x: 80, y: 156 };
+  var TREE_AT = { x: 80, y: 98 };
+  var COOP_AT = { x: 305, y: 155 };
+  var MILL_AT = { x: 25, y: 148 };
+  var BED_POS = [{ x: 224, y: 153 }, { x: 268, y: 153 }, { x: 246, y: 142 }, { x: 246, y: 164 }];
+  var STUMP = { x: 292, y: 119 };
+  var SPOT = { stump: { x: 292, y: 119 }, house: { x: 212, y: 114 }, well: { x: 126, y: 164 }, tree: { x: 118, y: 110 }, bed: [{ x: 200, y: 163 }, { x: 244, y: 163 }, { x: 220, y: 152 }, { x: 220, y: 174 }] };
+
+  var farmerPos = { x: SPOT.stump.x, y: SPOT.stump.y };
+  var farmerRun = 0;
+  var currentTool = "none";
+  var farmerIdle = true;
+  var farmerShelter = false;   // персонаж укрылся в доме от дождя
+  var animT = 0, lastFrame = 0;
+
+  function hex2rgb(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)];}
+  function mix(a,b,t2){var A=hex2rgb(a),B=hex2rgb(b);return "rgb("+Math.round(A[0]+(B[0]-A[0])*t2)+","+Math.round(A[1]+(B[1]-A[1])*t2)+","+Math.round(A[2]+(B[2]-A[2])*t2)+")";}
+  function fillPoly(g,pts,color){
+    g.fillStyle=color;var minY=1e9,maxY=-1e9,i;
+    for(i=0;i<pts.length;i++){if(pts[i][1]<minY)minY=pts[i][1];if(pts[i][1]>maxY)maxY=pts[i][1];}
+    minY=Math.floor(minY);maxY=Math.ceil(maxY);
+    for(var y=minY;y<=maxY;y++){var xs=[],yc=y+0.5;for(i=0;i<pts.length;i++){var a=pts[i],b=pts[(i+1)%pts.length];if((a[1]<=yc&&b[1]>yc)||(b[1]<=yc&&a[1]>yc))xs.push(a[0]+(yc-a[1])/(b[1]-a[1])*(b[0]-a[0]));}xs.sort(function(p,q){return p-q;});for(var k=0;k+1<xs.length;k+=2){var x1=Math.round(xs[k]),x2=Math.round(xs[k+1]);if(x2>x1)g.fillRect(x1,y,x2-x1,1);}}
+  }
+  function disc(g,cx,cy,r,color){g.fillStyle=color;for(var y=-r;y<=r;y++){var w=Math.floor(Math.sqrt(r*r-y*y));g.fillRect(cx-w,cy+y,w*2+1,1);}}
+  function ellipseFill(g,cx,cy,rx,ry,color){g.fillStyle=color;for(var dy=-ry;dy<=ry;dy++){var w=Math.round(rx*Math.sqrt(Math.max(0,1-(dy*dy)/(ry*ry))));if(w>0)g.fillRect(cx-w,cy+dy,w*2,1);}}
+  function edgeLine(g,p1,p2,color){
+    g.fillStyle=color;var x0=Math.round(p1[0]),y0=Math.round(p1[1]),x1=Math.round(p2[0]),y1=Math.round(p2[1]);
+    var dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy,guard=0;
+    while(guard++<400){g.fillRect(x0,y0,1,1);if(x0===x1&&y0===y1)break;var e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}
+  }
+  function isoBox(g,x,y,hw,hh,hgt,cTop,cLeft,cRight){
+    var back=[x,y-hh],right=[x+hw,y],front=[x,y+hh],left=[x-hw,y];
+    fillPoly(g,[left,front,[front[0],front[1]-hgt],[left[0],left[1]-hgt]],cLeft);
+    fillPoly(g,[front,right,[right[0],right[1]-hgt],[front[0],front[1]-hgt]],cRight);
+    fillPoly(g,[[back[0],back[1]-hgt],[right[0],right[1]-hgt],[front[0],front[1]-hgt],[left[0],left[1]-hgt]],cTop);
+  }
+  function facePt(L,F,t2,u,hgt){return [L[0]+(F[0]-L[0])*t2,L[1]+(F[1]-L[1])*t2-hgt*u];}
+  function animsOn(){return !!(state&&state.settings&&state.settings.anim);}
+
+  function buildBackground(){
+    var g=bgCanvas.getContext("2d");
+    for(var y=0;y<HORIZON;y++){var t2=y/HORIZON;g.fillStyle=t2<0.6?mix(C.sky1,C.sky2,t2/0.6):mix(C.sky2,C.sky3,(t2-0.6)/0.4);g.fillRect(0,y,CW,1);}
+    disc(g,268,20,10,C.sun);disc(g,268,20,6,C.sunLight);
+    for(var x=0;x<CW;x++){var h1=8+Math.round(4*Math.sin(x*0.021));g.fillStyle=C.hillFar;g.fillRect(x,HORIZON-12-h1,1,12+h1);var h2=4+Math.round(3*Math.sin(x*0.035+2));g.fillStyle=C.hillNear;g.fillRect(x,HORIZON-7-h2,1,7+h2);}
+    for(var y2=HORIZON;y2<CH;y2++){var t3=(y2-HORIZON)/(CH-HORIZON);g.fillStyle=mix(C.grass1,C.grass3,t3);g.fillRect(0,y2,CW,1);}
+    for(var yh=HORIZON;yh<HORIZON+54;yh++){var a=0.34*(1-(yh-HORIZON)/54);g.fillStyle="rgba(28,38,20,"+a.toFixed(3)+")";g.fillRect(0,yh,CW,1);}
+    g.fillStyle="rgba(0,0,0,.055)";
+    for(var k=-32;k<52;k++){var yA=HORIZON+k*7;for(var x2=0;x2<CW;x2++){var yB=Math.round(yA+x2*0.5);if(yB>=HORIZON&&yB<CH)g.fillRect(x2,yB,1,1);var yC=Math.round(yA-x2*0.5);if(yC>=HORIZON&&yC<CH)g.fillRect(x2,yC,1,1);}}
+    for(var py=104;py<CH;py++){var pt=(py-104)/(CH-104);var pcx=218-pt*62+Math.sin(pt*Math.PI*2.3)*9;var phw=6+pt*7;g.fillStyle=C.path;g.fillRect(Math.round(pcx-phw),py,Math.round(phw*2),1);g.fillStyle=C.pathDark;g.fillRect(Math.round(pcx-phw),py,1,1);g.fillRect(Math.round(pcx+phw)-1,py,1,1);if(py%9===0){g.fillStyle="rgba(255,255,255,.10)";g.fillRect(Math.round(pcx-phw)+3,py,Math.round(phw*2)-6,1);}}
+    var seed=12345;
+    for(var i=0;i<240;i++){seed=(seed*1103515245+12345)&0x7fffffff;var sx=seed%CW;seed=(seed*1103515245+12345)&0x7fffffff;var sy=HORIZON+(seed%(CH-HORIZON));seed=(seed*1103515245+12345)&0x7fffffff;g.fillStyle=(seed&1)?"rgba(255,255,255,.07)":"rgba(0,0,0,.07)";g.fillRect(sx,sy,1,1);}
+    g.fillStyle=C.grass3;[[14,76],[116,70],[236,74],[292,92],[30,120],[300,140],[268,176],[8,160],[246,100],[128,96]].forEach(function(p){g.fillRect(p[0],p[1],1,3);g.fillRect(p[0]-2,p[1]+1,1,2);g.fillRect(p[0]+2,p[1]+1,1,2);});
+  }
+
+  function drawHouse(g){
+    var lvl=state.house.level,terem=lvl>=HOUSE_LEVELS.length-1;
+    var x=HOUSE_AT.x,y=HOUSE_AT.y,hw=terem?44:38,hh=terem?18:16,hgt=terem?24:26;
+    isoBox(g,x,y,hw,hh,hgt,C.wall,C.wallSide,C.wallDark);
+    var right=[x+hw,y],front=[x,y+hh],left=[x-hw,y],topY=y-hgt;
+    for(var p=1;p<6;p++){var u=p/6;fillPoly(g,[facePt(left,front,0,u,hgt),facePt(left,front,1,u,hgt),facePt(left,front,1,u+0.012,hgt),facePt(left,front,0,u+0.012,hgt)],"rgba(90,60,30,.16)");fillPoly(g,[facePt(front,right,0,u,hgt),facePt(front,right,1,u,hgt),facePt(front,right,1,u+0.012,hgt),facePt(front,right,0,u+0.012,hgt)],"rgba(90,60,30,.12)");}
+    var doorL=facePt(left,front,0.34,0,hgt),doorR=facePt(left,front,0.62,0,hgt);
+    fillPoly(g,[doorL,doorR,[doorR[0],doorR[1]-hgt*0.72],[doorL[0],doorL[1]-hgt*0.72]],C.woodDark);
+    var d2l=facePt(left,front,0.37,0,hgt),d2r=facePt(left,front,0.59,0,hgt);
+    fillPoly(g,[d2l,d2r,[d2r[0],d2r[1]-hgt*0.68],[d2l[0],d2l[1]-hgt*0.68]],C.wood);
+    winFace(g,front,right,0.3,0.5,0.42,0.66,hgt);
+    if(lvl>=2)winFace(g,front,right,0.62,0.82,0.42,0.66,hgt);
+    var roofBaseY=topY,rw=hw+5,rh=hh+3,roofH=16+lvl*3,chX=x+16,chY=topY-6;
+    if(terem){
+      var upHw=25,upHh=11,upHgt=15,upY=topY-2;
+      fillPoly(g,[[x-hw-2,topY],[x,topY+hh+1],[x+hw+2,topY],[x+hw+2,topY+3],[x,topY+hh+4],[x-hw-2,topY+3]],C.roofSide);
+      isoBox(g,x,upY,upHw,upHh,upHgt,C.wall,C.wallSide,C.wallDark);
+      var upFront=[x,upY+upHh],upRight=[x+upHw,upY];
+      winFace(g,upFront,upRight,0.3,0.56,0.3,0.64,upHgt);winFace(g,upFront,upRight,0.66,0.86,0.3,0.64,upHgt);
+      roofBaseY=upY-upHgt;rw=upHw+6;rh=upHh+4;roofH=16;chX=x+17;chY=roofBaseY-4;
+    }
+    var rL=[x-rw,roofBaseY],rF=[x,roofBaseY+rh],rR=[x+rw,roofBaseY],apex=[x,roofBaseY-rh-roofH];
+    fillPoly(g,[rL,rF,apex],C.roofSide);fillPoly(g,[rF,rR,apex],C.roof);
+    fillPoly(g,[rL,rF,[rF[0],rF[1]-3],[rL[0],rL[1]-3]],"rgba(48,28,16,.22)");
+    fillPoly(g,[rF,rR,[rR[0],rR[1]-3],[rF[0],rF[1]-3]],"rgba(48,28,16,.28)");
+    edgeLine(g,rL,apex,C.roofDark);edgeLine(g,apex,rR,C.roofDark);edgeLine(g,rL,rF,C.roofDark);edgeLine(g,rF,rR,C.roofDark);
+    if(terem){g.fillStyle=C.hat;g.fillRect(x-1,apex[1]-4,2,3);g.fillStyle=C.hatDark;g.fillRect(x-2,apex[1]-5,4,1);g.fillStyle="#e8c56a";g.fillRect(x-1,apex[1]-7,2,2);g.fillRect(x-1,apex[1]-10,1,3);}
+    if(lvl>=2){var chx=chX,chy=chY;g.fillStyle=C.stoneDark;g.fillRect(chx,chy-16,8,22);g.fillStyle=C.stone;g.fillRect(chx+1,chy-15,6,20);g.fillStyle="rgba(255,255,255,.5)";g.fillRect(chx+2,chy-20,3,3);g.fillStyle="rgba(255,255,255,.3)";g.fillRect(chx+3,chy-24,3,3);if(animsOn())drawSmoke(g,chx+3,chy-19,animT,4,3,15);}
+  }
+  function winFace(g,A,B,t1,t2,u1,u2,hgt){
+    var p1=facePt(A,B,t1,u1,hgt),p2=facePt(A,B,t2,u1,hgt),p3=facePt(A,B,t2,u2,hgt),p4=facePt(A,B,t1,u2,hgt);
+    fillPoly(g,[p1,p2,p3,p4],C.glass);
+    fillPoly(g,[[p1[0],(p1[1]+p4[1])/2],[p2[0],(p2[1]+p3[1])/2],[p2[0],(p2[1]+p3[1])/2+1],[p1[0],(p1[1]+p4[1])/2+1]],C.glassDark);
+  }
+  /* Свет в окне дома: рисуется поверх дождя, когда персонаж укрылся */
+  function drawWindowGlow(g){
+    if(!state||!state.house)return;
+    var lvl=state.house.level,terem=lvl>=HOUSE_LEVELS.length-1;
+    var x=HOUSE_AT.x,y=HOUSE_AT.y,hw=terem?44:38,hh=terem?18:16,hgt=terem?24:26;
+    var right=[x+hw,y],front=[x,y+hh];
+    var w1=facePt(front,right,0.3,0.42,hgt),w2=facePt(front,right,0.5,0.42,hgt),
+        w3=facePt(front,right,0.5,0.66,hgt),w4=facePt(front,right,0.3,0.66,hgt);
+    fillPoly(g,[w1,w2,w3,w4],"rgba(255,214,120,.95)");
+    g.save();
+    g.globalAlpha=.35;
+    ellipseFill(g,(w1[0]+w3[0])/2,(w1[1]+w3[1])/2,12,9,"#ffd97a");
+    g.restore();
+  }
+
+  function drawWell(g){
+    var x=WELL_AT.x,y=WELL_AT.y,hw=24,hh=12,hgt=13;
+    isoBox(g,x,y,hw,hh,hgt,C.stone,C.stoneDark,C.stoneLight);
+    var topY=y-hgt;
+    ellipseFill(g,x,topY+1,15,7,C.stoneDark);ellipseFill(g,x,topY,14,6,C.stoneLight);
+    ellipseFill(g,x,topY+1,11,5,"#23282b");ellipseFill(g,x,topY+2,9,4,"#171b1e");
+    g.fillStyle="#3a4a50";g.fillRect(x-5,topY+1,3,1);g.fillRect(x+1,topY,2,1);
+    var ry=topY-24;
+    g.fillStyle=C.dark;g.fillRect(x,ry+6,1,8);
+    g.fillStyle=C.woodDark;g.fillRect(x-5,ry+13,11,2);
+    g.fillStyle=C.wood;g.fillRect(x-5,ry+15,11,7);
+    g.fillStyle=C.woodDark;g.fillRect(x-5,ry+18,11,1);
+    g.fillStyle=C.stoneLight;g.fillRect(x-4,ry+16,9,1);
+    g.fillStyle=C.woodDark;g.fillRect(x-20,topY-24,4,24);g.fillRect(x+16,topY-24,4,24);
+    g.fillStyle=C.wood;g.fillRect(x-19,topY-23,2,22);g.fillRect(x+17,topY-23,2,22);
+    var rL=[x-30,ry],rR=[x+30,ry],rF=[x,ry+8],apex=[x,ry-8-15];
+    fillPoly(g,[rL,rF,apex],C.roofSide);fillPoly(g,[rF,rR,apex],C.roof);
+    fillPoly(g,[rL,rF,[rF[0],rF[1]-2],[rL[0],rL[1]-2]],"rgba(48,28,16,.24)");
+    fillPoly(g,[rF,rR,[rR[0],rR[1]-2],[rF[0],rF[1]-2]],"rgba(48,28,16,.30)");
+    edgeLine(g,rL,apex,C.roofDark);edgeLine(g,apex,rR,C.roofDark);edgeLine(g,rL,rF,C.roofDark);edgeLine(g,rF,rR,C.roofDark);
+  }
+  function drawTree(g){
+    var x=TREE_AT.x,y=TREE_AT.y,felled=state.tree.regrow>0;
+    if(felled){isoBox(g,x,y,10,5,7,C.woodLight,C.woodDark,C.wood);return;}
+    g.fillStyle=C.woodDark;g.fillRect(x-5,y-40,10,40);g.fillStyle=C.wood;g.fillRect(x-4,y-40,7,40);g.fillStyle=C.woodDark;g.fillRect(x+1,y-40,1,40);
+    disc(g,x-11,y-46,11,C.leafDark);disc(g,x+11,y-46,11,C.leafDark);disc(g,x,y-55,18,C.leafDark);
+    disc(g,x-9,y-46,10,C.leaf);disc(g,x+9,y-46,10,C.leaf);disc(g,x,y-54,16,C.leaf);
+    disc(g,x-5,y-61,8,C.leafLight);disc(g,x+7,y-52,5,C.leafLight);
+  }
+  var BED_ORDER=[2,0,1,3];
+  function drawBeds(g){
+    BED_ORDER.forEach(function(i){
+      var pos=BED_POS[i],cx=pos.x,cy=pos.y;
+      if(!state.bedsOwned[i]){
+        isoBox(g,cx,cy,22,11,4,"#6f8a4e","#587039","#637c43");
+        var topY=cy-4;
+        var weed=[[-15,0],[-8,-3],[-1,1],[7,-3],[14,1],[-11,5],[1,6],[11,4]];
+        for(var k=0;k<weed.length;k++){var wx=cx+weed[k][0],wy=topY+weed[k][1],wh=4+(k%3);g.fillStyle=(k%2)?"#4f7a3f":"#6d8f4a";g.fillRect(wx,wy-wh,1,wh);g.fillRect(wx-1,wy-wh+1,1,2);g.fillRect(wx+1,wy-wh+2,1,2);}
+        return;
+      }
+      var b=state.beds[i],wet=b.status!=="dry";
+      isoBox(g,cx,cy,22,11,6,wet?C.soil:C.soilDry,wet?"#4a3524":"#6b4f39",wet?"#553c29":"#725741");
+      var ty=cy-6;
+      g.fillStyle="rgba(0,0,0,.16)";
+      for(var f=-1;f<=1;f++){var fy=ty+f*4;g.fillRect(cx-12+Math.abs(f)*4,fy,24-Math.abs(f)*8,1);}
+      drawPlant(g,cx,ty,b);
+    });
+  }
+  function drawPlant(g,cx,by,b){
+    if(b.status==="dry")return;
+    var threshold=(state._bonuses&&state._bonuses.growthThreshold)||GROW_STEPS;
+    var k=b.status==="growing"?b.growth/threshold:1;
+    var hgt=4+Math.round(k*15);
+    var ripe=b.status==="ripe",rot=b.status==="rot";
+    var stemC=rot?"#8a7a52":(ripe?"#8a6a2a":"#4a7a3c");
+    var leafC=rot?"#9c8c66":(ripe?"#b99a45":"#5f8f4b");
+    g.fillStyle=stemC;g.fillRect(cx,by-hgt,1,hgt);
+    var lv=Math.max(1,Math.round(hgt/4));
+    for(var i=0;i<lv;i++){var ly=by-4-i*3;if(ly<by-hgt)break;g.fillStyle=leafC;g.fillRect(cx-3,ly,3,1);g.fillRect(cx+1,ly-1,3,1);}
+    if(ripe){g.fillStyle="#d9a441";g.fillRect(cx-1,by-hgt-3,3,3);g.fillStyle="#f0c060";g.fillRect(cx,by-hgt-3,1,1);}
+    if(rot){g.fillStyle="#7d6f4e";g.fillRect(cx-1,by-hgt,3,2);g.fillRect(cx-2,by-hgt+2,1,1);}
+  }
+  function drawTool(g,x,y,kind){
+    if(kind==="axe"){g.fillStyle="#8a6236";g.fillRect(x,y-7,1,11);g.fillStyle="#b9c0c4";g.fillRect(x+1,y-9,4,4);g.fillStyle="#9aa1a6";g.fillRect(x+1,y-6,4,1);}
+    else if(kind==="hammer"){g.fillStyle="#8a6236";g.fillRect(x,y-5,1,9);g.fillStyle="#9aa0a6";g.fillRect(x-2,y-8,6,3);}
+    else if(kind==="can"){g.fillStyle="#4d7f8a";g.fillRect(x-1,y-4,6,5);g.fillStyle="#3f6d77";g.fillRect(x+5,y-5,3,1);g.fillRect(x-3,y-3,2,1);}
+    else if(kind==="basket"){g.fillStyle="#a9743f";g.fillRect(x-1,y-4,6,5);g.fillStyle="#8a5c31";g.fillRect(x-1,y-5,6,1);}
+  }
+  function drawFarmer(g){
+    var x=Math.round(farmerPos.x),y=Math.round(farmerPos.y);
+    g.fillStyle=C.boot;g.fillRect(x-4,y-3,4,3);g.fillRect(x+1,y-3,4,2);
+    g.fillStyle=C.pants;g.fillRect(x-4,y-8,3,5);g.fillRect(x+2,y-8,3,5);
+    g.fillStyle=C.shirt;g.fillRect(x-5,y-15,10,7);g.fillStyle=C.shirtDark;g.fillRect(x-5,y-15,2,7);
+    g.fillStyle=C.shirt;g.fillRect(x-7,y-14,2,6);g.fillRect(x+5,y-14,2,6);
+    g.fillStyle=C.skin;g.fillRect(x-7,y-8,2,2);g.fillRect(x+5,y-8,2,2);g.fillRect(x-3,y-21,7,6);
+    g.fillStyle="#3a2f28";g.fillRect(x-1,y-19,1,1);g.fillRect(x+2,y-19,1,1);
+    g.fillStyle=C.hatDark;g.fillRect(x-6,y-23,13,2);g.fillStyle=C.hat;g.fillRect(x-4,y-26,9,3);
+    drawTool(g,x+6,y-12,currentTool);
+  }
+  function castShadow(g,drawFn,ax,ay,scale){
+    if(!shadowCtx)return;
+    var k=scale||1,a=0.75*k,b=0.375*k;
+    shadowCtx.setTransform(1,0,0,1,0,0);shadowCtx.clearRect(0,0,CW,CH);shadowCtx.imageSmoothingEnabled=false;
+    drawFn(shadowCtx);
+    shadowCtx.globalCompositeOperation="source-in";shadowCtx.fillStyle="#1d2b18";shadowCtx.fillRect(0,0,CW,CH);
+    shadowCtx.globalCompositeOperation="source-over";
+    g.save();g.globalAlpha=0.3;g.setTransform(1,0,a,-b,-a*ay,(1+b)*ay);g.drawImage(shadowCanvas,0,0);g.restore();
+  }
+  function drawFarmerSitting(g,x,y){
+    g.fillStyle=C.pants;g.fillRect(x-6,y-9,11,4);g.fillRect(x-6,y-6,3,6);g.fillRect(x+2,y-6,3,6);
+    g.fillStyle=C.boot;g.fillRect(x-8,y-2,5,2);g.fillRect(x+1,y-2,5,2);
+    g.fillStyle=C.shirt;g.fillRect(x-5,y-18,10,9);g.fillStyle=C.shirtDark;g.fillRect(x-5,y-18,2,9);
+    g.fillStyle=C.skin;g.fillRect(x-3,y-24,7,6);
+    g.fillStyle="#3a2f28";g.fillRect(x-1,y-22,1,1);g.fillRect(x+2,y-22,1,1);
+    g.fillStyle=C.hatDark;g.fillRect(x-6,y-26,13,2);g.fillStyle=C.hat;g.fillRect(x-4,y-29,9,3);
+    g.fillStyle=C.shirt;g.fillRect(x+4,y-18,3,3);g.fillStyle=C.skin;g.fillRect(x+6,y-16,3,2);
+    g.fillStyle="#f2e9d6";g.fillRect(x+9,y-16,4,1);g.fillStyle="#e0653a";g.fillRect(x+12,y-16,1,1);
+    if(animsOn())drawSmoke(g,x+13,y-18,animT,3,2,11);
+  }
+  function drawStump(g){
+    var x=STUMP.x,y=STUMP.y;
+    ellipseFill(g,x,y,10,5,C.woodDark);
+    g.fillStyle=C.woodDark;g.fillRect(x-10,y-9,20,9);
+    g.fillStyle=C.wood;g.fillRect(x-9,y-9,18,9);
+    g.fillStyle="#8a6039";g.fillRect(x+4,y-8,3,8);
+    ellipseFill(g,x,y-9,10,5,C.woodLight);ellipseFill(g,x,y-9,6,3,"#b98a4f");
+    g.fillStyle=C.woodLight;g.fillRect(x-2,y-10,1,2);g.fillRect(x+2,y-9,2,1);
+  }
+  function drawClouds(g,t2){var total=CW+70,speed=0.0022,defs=[[46,22,13],[96,13,8],[196,28,10]];for(var i=0;i<defs.length;i++){var c=defs[i];var x=Math.round((((c[0]+t2*speed+i*41)%total)+total)%total-35);g.fillStyle=C.cloud;g.fillRect(x-c[2],c[1],c[2]*2,4);g.fillRect(x-c[2]+4,c[1]-3,c[2]*2-8,4);}}
+  function drawBirds(g,t2){var cycle=17000;var p=(t2%cycle)/cycle;if(p>0.5)return;var k=p/0.5;var bx=Math.round(-14+k*(CW+28));var by=Math.round(24+Math.sin(k*3.3)*6);var flap=Math.sin(t2/110)>0?1:0;g.fillStyle="#3f3f38";g.fillRect(bx,by,1,1);g.fillRect(bx-2,by-flap,2,1);g.fillRect(bx+1,by-flap,2,1);}
+  function drawPuff(g,x,y,t2,phase,spread,rise){var p=((t2/2400)+phase)%1;var px=x+Math.round(Math.sin(p*6.5+phase*11)*spread);var py=y-Math.round(p*rise);g.fillStyle="rgba(240,240,234,"+(0.45*(1-p)).toFixed(3)+")";g.fillRect(px,py,p>0.45?2:1,1);}
+  function drawSmoke(g,x,y,t2,count,spread,rise){for(var i=0;i<count;i++)drawPuff(g,x,y,t2,i/count,spread,rise);}
+  function drawFence(g){
+    var lvl=state.house.level;if(lvl<1)return;
+    var bx0=302,bx1=318,by=104;
+    for(var x=bx0;x<=bx1;x+=4){g.fillStyle=C.wood;g.fillRect(x,by-6,2,6);g.fillStyle=C.woodDark;g.fillRect(x+1,by-6,1,6);}
+    g.fillStyle=C.wood;g.fillRect(bx0-1,by-11,bx1-bx0+2,2);
+    g.fillStyle="#8a642f";for(var k=0;k<2;k++)g.fillRect(bx0+k*6,by-4,2,1);
+    var fx1=310,total=lvl*45,fx0=Math.max(195,fx1-total),fy=188;
+    for(var fx=fx0;fx<=fx1;fx+=4){g.fillStyle=C.wood;g.fillRect(fx,fy-6,2,6);g.fillStyle=C.woodDark;g.fillRect(fx+1,fy-6,1,6);}
+    g.fillStyle=C.wood;g.fillRect(fx0-1,fy-11,fx1-fx0+2,2);
+    g.fillStyle="#8a642f";for(var p=0;p<Math.floor((fx1-fx0)/6);p++){g.fillRect(fx0+p*6,fy-5,2,1);}
+  }
+  function drawChickens(g,t2){
+    var defs=[[146,122],[174,126]];
+    for(var i=0;i<defs.length;i++){var x=defs[i][0],y=defs[i][1];var peck=animsOn()?Math.sin(t2/340+i*2.1):0;var bob=peck>0.6?1:0;g.fillStyle="#e8e2d0";g.fillRect(x-2,y-4,5,3);g.fillStyle="#ffffff";g.fillRect(x+1,y-5,2,2);g.fillStyle="#d9a441";g.fillRect(x+1,y-6,1,1);g.fillStyle="#c23b22";g.fillRect(x-3,y-3,1,2);g.fillStyle="#e8e2d0";g.fillRect(x-3,y-5+bob,2,2);}
+  }
+  function drawRain(g){var t2=animsOn()?animT:(state?state.turn*900:0);g.fillStyle="rgba(82,96,104,0.55)";g.fillRect(0,0,CW,32);g.fillStyle="rgba(70,84,92,0.5)";for(var c=0;c<4;c++){var cx=((c*90+Math.floor(t2/60))%(CW+40))-40;ellipseFill(g,cx,14+(c%2)*5,40,8,"rgba(60,70,78,0.6)");}for(var i=0;i<38;i++){var sx=(i*47+Math.floor(t2/40))%CW;var sy=30+((i*67+Math.floor(t2/40))%(CH-30));g.fillStyle="rgba(185,212,226,.55)";g.fillRect(sx,sy,1,3);}}
+  function drawRainOverlay(g){g.fillStyle="rgba(40,52,58,0.30)";g.fillRect(0,0,CW,CH);}
+  function drawTrader(g){
+    var x=116,y=176;
+    g.fillStyle="rgba(34,44,26,.22)";g.fillRect(x-5,y-1,11,2);
+    g.fillStyle=C.woodDark;g.fillRect(x-16,y-9,32,6);
+    g.fillStyle=C.wood;g.fillRect(x-15,y-9,30,2);
+    g.fillStyle=C.woodDark;g.fillRect(x-14,y-3,3,3);g.fillRect(x+11,y-3,3,3);
+    g.fillStyle="#d9a441";g.fillRect(x-10,y-12,3,3);
+    g.fillStyle="#c23b22";g.fillRect(x-4,y-12,3,3);
+    g.fillStyle="#4f7a3f";g.fillRect(x+3,y-12,3,3);
+    g.fillStyle=C.pants;g.fillRect(x-4,y-24,8,15);
+    g.fillStyle="#7a5230";g.fillRect(x-5,y-33,10,10);
+    g.fillStyle=C.skin;g.fillRect(x-3,y-40,7,7);
+    g.fillStyle="#3a2f28";g.fillRect(x-6,y-35,12,6);g.fillRect(x-1,y-42,3,4);
+    g.fillStyle=C.skin;g.fillRect(x-1,y-40,2,2);
+  }
+  function drawCoop(g){
+    if(!state.buildings.coop)return;
+    var x=COOP_AT.x,y=COOP_AT.y;
+    isoBox(g,x,y,11,6,9,"#dba86f","#b8834e","#c99560");
+    var rL=[x-14,y-9],rR=[x+14,y-9],rF=[x,y-1],apex=[x,y-22];
+    fillPoly(g,[rL,rF,apex],C.roofSide);fillPoly(g,[rF,rR,apex],C.roof);
+    fillPoly(g,[rL,rF,[rF[0],rF[1]-2],[rL[0],rL[1]-2]],"rgba(48,28,16,.22)");
+    fillPoly(g,[rF,rR,[rR[0],rR[1]-2],[rF[0],rF[1]-2]],"rgba(48,28,16,.28)");
+    edgeLine(g,rL,apex,C.roofDark);edgeLine(g,apex,rR,C.roofDark);
+    g.fillStyle=C.woodDark;g.fillRect(x-2,y-7,4,7);
+    g.fillStyle=C.wood;g.fillRect(x-1,y-6,2,6);
+    g.fillStyle="#f6eedd";g.fillRect(x+8,y-3,4,3);
+    g.fillStyle="#ffffff";g.fillRect(x+10,y-5,2,2);
+    g.fillStyle="#d9a441";g.fillRect(x+11,y-6,1,1);
+    g.fillStyle="#c23b22";g.fillRect(x+7,y-3,1,2);
+  }
+  function drawMill(g,t2){
+    if(!state.buildings.mill)return;
+    var x=MILL_AT.x,y=MILL_AT.y;
+    ellipseFill(g,x,y,13,5,"rgba(30,40,24,.28)");
+    fillPoly(g,[[x-11,y],[x+11,y],[x+7,y-48],[x-7,y-48]],"#d3a973");
+    fillPoly(g,[[x,y],[x+11,y],[x+7,y-48],[x,y-48]],"rgba(120,80,45,0.32)");
+    g.fillStyle="rgba(90,60,30,0.18)";
+    for(var p=1;p<5;p++){var py=y-p*10,hw=11-p*0.8;g.fillRect(Math.round(x-hw),py,Math.round(hw*2),1);}
+    g.fillStyle=C.glassDark;g.fillRect(x-2,y-32,4,4);
+    g.fillStyle=C.glass;g.fillRect(x-1,y-31,2,2);
+    g.fillStyle=C.woodDark;g.fillRect(x-4,y-12,8,12);
+    g.fillStyle=C.wood;g.fillRect(x-3,y-11,6,11);
+    g.fillStyle=C.woodDark;g.fillRect(x-1,y-6,1,1);
+    fillPoly(g,[[x-9,y-48],[x+9,y-48],[x,y-58]],C.roof);
+    fillPoly(g,[[x,y-48],[x+9,y-48],[x,y-58]],"rgba(0,0,0,0.22)");
+    edgeLine(g,[x-9,y-48],[x,y-58],C.roofDark);edgeLine(g,[x,y-58],[x+9,y-48],C.roofDark);
+    var bx=x,by=y-46,angle=animsOn()?(t2/900):0.35,bladeLen=20;
+    for(var k=0;k<4;k++){
+      var a=angle+k*Math.PI/2;
+      for(var s=2;s<=bladeLen;s+=0.5){var px=Math.round(bx+Math.cos(a)*s),py2=Math.round(by+Math.sin(a)*s);g.fillStyle=C.woodDark;g.fillRect(px,py2,1,1);}
+      for(var s2=12;s2<=bladeLen;s2+=0.5){var px2=bx+Math.cos(a)*s2,py3=by+Math.sin(a)*s2;for(var off=-3;off<=3;off++){var ox=Math.cos(a+Math.PI/2)*off,oy=Math.sin(a+Math.PI/2)*off;g.fillStyle="#f0e6cc";g.fillRect(Math.round(px2+ox),Math.round(py3+oy),1,1);}}
+    }
+    g.fillStyle=C.woodDark;g.fillRect(bx-2,by-2,4,4);
+    g.fillStyle=C.hat;g.fillRect(bx-1,by-1,2,2);
+  }
+  function drawAll(){
+    if(!ctx||!state)return;
+    ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(bgCanvas,0,0);
+    drawClouds(ctx,animsOn()?animT:0);
+    if(animsOn())drawBirds(ctx,animT);
+    castShadow(ctx,drawTree,TREE_AT.x,TREE_AT.y,1);
+    castShadow(ctx,drawHouse,HOUSE_AT.x,HOUSE_AT.y,1.3);
+    castShadow(ctx,drawWell,WELL_AT.x,WELL_AT.y,1.3);
+    castShadow(ctx,drawStump,STUMP.x,STUMP.y,1);
+    if(state.buildings.coop)castShadow(ctx,drawCoop,COOP_AT.x,COOP_AT.y,0.85);
+    if(state.buildings.mill)castShadow(ctx,function(sc){drawMill(sc,0);},MILL_AT.x,MILL_AT.y,0.9);
+    drawTree(ctx);drawHouse(ctx);drawMill(ctx,animsOn()?animT:0);drawWell(ctx);drawBeds(ctx);drawStump(ctx);drawCoop(ctx);
+    var hl=state.house.level;
+    if(hl>=1)drawFence(ctx);
+    if(hl>=2)drawChickens(ctx,animsOn()?animT:0);
+    if(state.weather.rain>0)drawRain(ctx);
+    if(state.weather.trade>0)drawTrader(ctx);
+    var arrivedHome=farmerShelter&&Math.round(farmerPos.x)===SPOT.house.x&&Math.round(farmerPos.y)===SPOT.house.y;
+    if(arrivedHome){ /* персонаж ушёл в дом — во дворе его не рисуем */ }
+    else if(farmerIdle&&Math.round(farmerPos.x)===STUMP.x&&Math.round(farmerPos.y)===STUMP.y)drawFarmerSitting(ctx,STUMP.x,STUMP.y-2);
+    else drawFarmer(ctx);
+    if(state.weather.rain>0)drawRainOverlay(ctx);
+    if(farmerShelter)drawWindowGlow(ctx);
+  }
+  function sendFarmer(spot,tool,idle,shelter){
+    if(!spot)return;
+    farmerShelter=!!shelter;
+    currentTool=tool||"none";
+    farmerIdle=!!idle;
+    var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(reduce){farmerRun++;farmerPos={x:spot.x,y:spot.y};drawAll();return;}
+    var from={x:farmerPos.x,y:farmerPos.y};
+    var token=++farmerRun;
+    var t0=performance.now(),dur=430;
+    function step(now){
+      if(token!==farmerRun)return;
+      var k=Math.min(1,(now-t0)/dur);
+      var e=1-Math.pow(1-k,3);
+      farmerPos.x=from.x+(spot.x-from.x)*e;
+      farmerPos.y=from.y+(spot.y-from.y)*e;
+      drawAll();
+      if(k<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function resetFarmer(){farmerRun++;farmerPos={x:SPOT.stump.x,y:SPOT.stump.y};currentTool="none";farmerIdle=true;farmerShelter=false;drawAll();}
+  function startLoop(){
+    function tick(now){
+      requestAnimationFrame(tick);
+      if(!state||!state.settings||!state.settings.anim)return;
+      if(now-lastFrame<60)return;
+      lastFrame=now;animT=now;drawAll();
+    }
+    requestAnimationFrame(tick);
+  }
+  function layoutButtons(){
+    var spots=[["btn-house",HOUSE_AT.x,22],["btn-tree",TREE_AT.x,16],["btn-well",WELL_AT.x,90],["btn-stump-wait",STUMP.x,80]];
+    spots.forEach(function(s){var b=document.getElementById(s[0]);if(b){b.style.left=(s[1]/CW*100).toFixed(2)+"%";b.style.top=(s[2]/CH*100).toFixed(2)+"%";}});
+    var bedBtns=[[198,166],[294,166],[246,124],[246,186]];
+    for(var i=0;i<4;i++){var bb=document.getElementById("btn-bed-"+i);if(bb){bb.style.left=(bedBtns[i][0]/CW*100).toFixed(2)+"%";bb.style.top=(bedBtns[i][1]/CH*100).toFixed(2)+"%";}}
+    var tip=document.getElementById("tutorial-tip");
+    if(tip){tip.style.left=(BED_POS[0].x/CW*100).toFixed(2)+"%";tip.style.top=((BED_POS[0].y-22)/CH*100).toFixed(2)+"%";}
+    var qt=document.getElementById("btn-quests-trader");
+    if(qt){qt.style.left=(116/CW*100).toFixed(2)+"%";qt.style.top=(128/CH*100).toFixed(2)+"%";}
+  }
+
+  var ICONS={
+    bed:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="2" y="12" width="20" height="8" rx="3" fill="#6d4c34"/><path d="M7 12 q0 -7 5 -7 q5 0 5 7" fill="#5f8f4b"/><circle cx="12" cy="7" r="2.4" fill="#d9a441"/></svg>',
+    axe:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="11" y="3" width="2.8" height="18" rx="1.2" fill="#8a6236"/><path d="M12 4 q8 -1 7 8 l-7 1 z" fill="#b9c0c4" stroke="#8f979b"/></svg>',
+    can:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="4" y="8" width="13" height="10" rx="2.5" fill="#4d7f8a"/><path d="M17 11 l4.5 -3" stroke="#4d7f8a" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M4 11 l-2.5 2" stroke="#4d7f8a" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>',
+    coop:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="1" fill="#d3a973" stroke="#8a6236" stroke-width="1.2"/><path d="M2 11 L12 3 L22 11 Z" fill="#8d5b3f"/><circle cx="12" cy="16" r="2.4" fill="#fff"/><circle cx="12.6" cy="15.4" r="0.4" fill="#333"/><path d="M9.6 16 L8 17 L8 15 Z" fill="#d9a441"/></svg>',
+    mill:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M10 22 L14 22 L13 8 L11 8 Z" fill="#d3a973" stroke="#8a6236" stroke-width="1.2"/><path d="M12 8 L12 2 M12 8 L18 5 M12 8 L18 11 M12 8 L6 11 M12 8 L6 5" stroke="#e8dcc0" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="8" r="1.2" fill="#7a5230"/></svg>'
+  };
+
+  function setButton(btn,label,sub,enabled,ready,reason){
+    btn.innerHTML="";
+    var main=document.createElement("span");main.textContent=label;btn.appendChild(main);
+    if(sub){var s=document.createElement("span");s.className="sub";s.textContent=sub;btn.appendChild(s);}
+    btn.disabled=!enabled;
+    btn.classList.toggle("ready", !!ready && !!enabled);
+    btn.setAttribute("aria-label",label+(sub?", "+sub:"")+(enabled?"":", "+(reason||"unavailable")));
+    btn.title=enabled?(label+(sub?" · "+sub:"")):(reason||"unavailable");
+  }
+
+  function renderBeds(){
+    var threshold=(state._bonuses&&state._bonuses.growthThreshold)||GROW_STEPS;
+    state.beds.forEach(function(b,i){
+      var btn=document.getElementById("btn-bed-"+i);
+      btn.classList.remove("tutorial");
+      if(state.bedsOwned[i]===0){
+        var it=shopList().filter(function(s){return s.kind==="bed"&&s.index===i&&!s.lockedMax;})[0];
+        var canBuy=it&&state.gold>=it.price&&!state.won;
+        setButton(btn,t("buy"),it?it.price+" "+t("plan_gold"):"",!!canBuy,!!canBuy,"need gold");
+        return;
+      }
+      if(b.status==="dry"){
+        var canWater=state.water>0&&!state.won;
+        setButton(btn,t("water_btn"),"",canWater,false,"no water");
+        if(state.tutorial&&i===0&&canWater)btn.classList.add("tutorial");
+      } else if(b.status==="growing"){
+        setButton(btn,t("growing_status",{n:b.growth,total:threshold}),t("growing_sub"),false,false,"growing");
+      } else if(b.status==="ripe"){
+        var c=bedGoldLevel(state.bedsOwned[i]);
+        if(state.weather.trade>0)c=Math.round(c*1.5);
+        setButton(btn,t("harvest"),"+"+c+" "+t("plan_gold"),!state.won,true,"might rot");
+      } else {
+        setButton(btn,t("rotten"),t("rotten_sub"),false,false,"lost");
+      }
+    });
+  }
+  function renderTree(){
+    var tr=state.tree,felled=tr.regrow>0;
+    var btn=document.getElementById("btn-tree");
+    var gain=chopYield(state.axe);
+    if(state.axe===0)setButton(btn,t("need_axe"),t("need_axe_sub"),false,false,"buy axe first");
+    else if(felled)setButton(btn,t("growing_tree"),t("growing_tree_sub",{n:tr.regrow}),false,false,"not regrown");
+    else setButton(btn,t("chop"),"+"+gain+" "+t("plan_wood"),!state.won,false,"game over");
+  }
+  function renderHouse(){
+    var lvl=state.house.level,u=nextUpgrade();
+    var current=houseName(Math.min(lvl,HOUSE_LEVELS.length-1));
+    if(lvl>=HOUSE_LEVELS.length)current=t("house_ext_suffix",{n:lvl-(HOUSE_LEVELS.length-1)});
+    el.houseName.textContent=current;
+    var btn=document.getElementById("btn-house");
+    if(!u){
+      el.houseProg.textContent=t("house_ready");
+      el.houseBar.style.width="100%";
+      el.houseNext.textContent=t("house_done_text");
+      setButton(btn,t("done"),"",false,false,"done");
+      return;
+    }
+    el.houseProg.textContent=u.hitsDone+" / "+u.totalHits;
+    el.houseBar.style.width=(u.hitsDone/u.totalHits*100)+"%";
+    if(u.needBuilding&&!state.buildings[u.needBuilding]){
+      var needCoop=u.needBuilding==="coop";
+      el.houseNext.innerHTML=t(needCoop?"house_gate_coop":"house_gate_mill");
+      setButton(btn,t("hammer"),"",false,false,t(needCoop?"house_gate_coop_short":"house_gate_mill_short"));
+      return;
+    }
+    el.houseNext.innerHTML=t("house_next_text",{name:u.name,hits:u.totalHits,gold:u.gold,wood:u.wood});
+    var can=state.gold>=u.gold&&state.wood>=u.wood&&!state.won;
+    var reason=!can?t("house_reason_mats",{gold:u.gold,wood:u.wood}):"game over";
+    setButton(btn,t("hammer"),u.gold+" "+t("plan_gold")+" · "+u.wood+" "+t("plan_wood"),can,false,reason);
+  }
+  function renderWell(){
+    var cap=canCap(state.can),btn=document.getElementById("btn-well");
+    setButton(btn,t("well"),state.water+"/"+cap,state.water<cap&&!state.won,false,"full");
+  }
+  var trayEls = {};
+  function renderTray(){
+    var box=document.getElementById("tray-items");
+    var items=shopList();
+    var noneEl=box.querySelector(".item.none");
+    if(items.length===0){
+      Object.keys(trayEls).forEach(function(id){
+        var r=trayEls[id];if(r.btn.parentNode)r.btn.parentNode.removeChild(r.btn);
+      });
+      trayEls={};
+      if(!noneEl){noneEl=document.createElement("div");noneEl.className="item none";box.appendChild(noneEl);}
+      noneEl.textContent=t("nothing_to_buy");
+      return;
+    }
+    if(noneEl&&noneEl.parentNode)noneEl.parentNode.removeChild(noneEl);
+    var seen={},desired=[];
+    items.forEach(function(item){
+      seen[item.id]=true;
+      desired.push("item-"+item.id);
+      var rec=trayEls[item.id];
+      if(!rec){
+        var btn=document.createElement("button");
+        btn.type="button";btn.id="item-"+item.id;btn.className="item";
+        var ico=document.createElement("span");ico.className="ico";ico.innerHTML=ICONS[item.kind]||ICONS.bed;
+        var txt=document.createElement("span");txt.className="txt";
+        var nm=document.createElement("b");
+        var ds=document.createElement("i");
+        txt.appendChild(nm);txt.appendChild(ds);
+        var pr=document.createElement("span");pr.className="price";
+        btn.appendChild(ico);btn.appendChild(txt);btn.appendChild(pr);
+        (function(id){
+          btn.addEventListener("click",function(){
+            var it=shopList().filter(function(s){return s.id===id;})[0];
+            if(it&&!it.lockedMax)buy(it);
+          });
+        })(item.id);
+        rec={btn:btn,nm:nm,ds:ds,pr:pr};
+        trayEls[item.id]=rec;
+      }
+      var locked=!!item.lockedMax;
+      var affordable=state.gold>=item.price&&(!item.woodPrice||state.wood>=item.woodPrice);
+      var enabled=!locked&&affordable&&!state.won;
+      rec.btn.classList.toggle("locked",locked);
+      rec.btn.disabled=!enabled;
+      rec.nm.textContent=item.name;
+      rec.ds.textContent=locked?(item.lockedReason||"locked"):item.desc;
+      if(locked)rec.pr.textContent=t("locked_symbol");
+      else{
+        var parts=[item.price+" "+t("plan_gold")];
+        if(item.woodPrice)parts.push(item.woodPrice+" "+t("plan_wood"));
+        rec.pr.textContent=parts.join(" · ");
+      }
+      rec.btn.title=locked?(item.lockedReason||"locked"):item.name+" · "+item.desc;
+    });
+    Object.keys(trayEls).forEach(function(id){
+      if(!seen[id]){
+        var r=trayEls[id];
+        if(r.btn.parentNode)r.btn.parentNode.removeChild(r.btn);
+        delete trayEls[id];
+      }
+    });
+    var cur=[].map.call(box.querySelectorAll(".item:not(.none)"),function(b){return b.id;});
+    var same=cur.length===desired.length&&cur.every(function(v,i){return v===desired[i];});
+    if(!same)desired.forEach(function(id){var r=trayEls[id.slice(5)];if(r)box.appendChild(r.btn);});
+  }
+  function renderHud(){
+    el.turn.textContent=state.turn;
+    el.gold.textContent=state.gold;
+    el.wood.textContent=state.wood;
+    el.water.textContent=state.water+"/"+canCap(state.can);
+    var rainPill=document.getElementById("pill-rain");
+    var tradePill=document.getElementById("pill-trade");
+    if(el.rain&&rainPill){
+      if(state.weather.rain>0){el.rain.textContent=lang==="en"?("on "+state.weather.rain):("идёт "+state.weather.rain);rainPill.classList.add("raining");}
+      else if(state.weather.rainCooldown>0){el.rain.textContent=lang==="en"?("in "+state.weather.rainCooldown):("через "+state.weather.rainCooldown);rainPill.classList.remove("raining");}
+      else{el.rain.textContent="—";rainPill.classList.remove("raining");}
+    }
+    var tradeRoute=!!(state._bonuses&&state._bonuses.tradeRoute);
+    if(el.trade&&tradePill){
+      if(tradeRoute){
+        el.trade.textContent="×2";
+        tradePill.classList.add("trading");
+        tradePill.title=t("hint_trade_route");
+      } else if(state.weather.trade>0){
+        el.trade.textContent=lang==="en"?("here "+state.weather.trade):("тут "+state.weather.trade);
+        tradePill.classList.add("trading");
+      } else if(state.weather.tradeTimer>0){
+        el.trade.textContent=lang==="en"?("in "+state.weather.tradeTimer):("через "+state.weather.tradeTimer);
+        tradePill.classList.remove("trading");
+      } else {
+        el.trade.textContent="—";
+        tradePill.classList.remove("trading");
+      }
+    }
+    var repPill=document.getElementById("pill-reputation");
+    var repVal=document.getElementById("stat-reputation");
+    if(repPill&&repVal&&meta){
+      if(meta.totalReputation>0||meta.reputation>0){repPill.style.display="";repVal.textContent=meta.reputation;}
+      else repPill.style.display="none";
+    }
+    var tradeActive=state.weather.trade>0;
+    var qh=document.getElementById("btn-quests-hud");
+    var qt=document.getElementById("btn-quests-trader");
+    if(qh)qh.classList.toggle("hidden",!tradeActive);
+    if(qt)qt.classList.toggle("hidden",!tradeActive);
+  }
+  function renderLog(){
+    el.log.innerHTML="";
+    var limit=logExpanded?state.log.length:14;
+    var btn=document.getElementById("btn-log-toggle");
+    if(btn)btn.textContent=logExpanded?t("log_collapse"):t("log_all");
+    state.log.slice(0,limit).forEach(function(e){
+      var d=document.createElement("div");
+      var tEl=document.createElement("em");tEl.textContent=(lang==="en"?"t.":"х.")+e.turn;
+      d.appendChild(tEl);d.appendChild(document.createTextNode(e.text));
+      el.log.appendChild(d);
+    });
+  }
+  function renderHint(){
+    if(state.won){el.hint.textContent=t("hint_won",{turn:state.turn});return;}
+    if(state._bonuses&&state._bonuses.tradeRoute&&(state.harvestedTotal||0)===0){el.hint.textContent=t("hint_trade_route");return;}
+    if(state.weather.trade>0){el.hint.textContent=t("hint_trader");return;}
+    if(state.weather.rain>0){el.hint.textContent=t("hint_rain");return;}
+    if(state.tutorial&&state.beds[0]&&state.beds[0].status==="dry"){el.hint.textContent=t("hint_tutorial");return;}
+    var ripe=state.beds.filter(function(b){return b.status==="ripe";}).length;
+    if(ripe>0){el.hint.textContent=t("hint_ripe");return;}
+    if(state.water===0){el.hint.textContent=t("hint_empty_can");return;}
+    var buyable=shopList().filter(function(s){return !s.lockedMax&&state.gold>=s.price&&(!s.woodPrice||state.wood>=s.woodPrice);});
+    if(buyable.length){el.hint.textContent=t("hint_buyable",{name:buyable[0].name,price:buyable[0].price});return;}
+    if(state.axe===0){el.hint.textContent=t("hint_no_axe");return;}
+    el.hint.textContent=t("hint_default");
+  }
+
+  function render(){
+    renderHud();
+    renderBeds();
+    renderTree();
+    renderHouse();
+    renderWell();
+    var stumpWait=document.getElementById("btn-stump-wait");
+    if(stumpWait)setButton(stumpWait,t("wait"),"",!state.won,false,t("house_ready"));
+    renderTray();
+    renderLog();
+    renderHint();
+    drawAll();
+    document.getElementById("btn-wait").disabled=state.won;
+    document.getElementById("btn-wait").innerHTML=t("wait")+"<span>"+t("turn1")+"</span>";
+    var optAnim=document.getElementById("opt-anim"),optEndless=document.getElementById("opt-endless"),optSound=document.getElementById("opt-sound"),optMusic=document.getElementById("opt-music"),optLang=document.getElementById("opt-lang");
+    if(optAnim)optAnim.checked=!!state.settings.anim;
+    if(optEndless)optEndless.checked=!!state.settings.endless;
+    if(optSound)optSound.checked=!!state.settings.sound;
+    if(optMusic)optMusic.checked=!!state.settings.music;
+    if(optLang)optLang.value=state.settings.lang||"ru";
+    var tip=document.getElementById("tutorial-tip");
+    if(tip){var show=state.tutorial&&state.beds[0]&&state.beds[0].status==="dry"&&!state.won&&gameStarted&&!paused;tip.classList.toggle("on",!!show);}
+    var win=document.getElementById("win");
+    if(state.won){
+      document.getElementById("win-text").textContent=t("win_text",{turn:state.turn,gold:state.gold,wood:state.wood});
+      win.classList.add("on");
+      var r=calcReputation();
+      var bpw=document.getElementById("btn-prestige-win");
+      if(bpw)bpw.textContent=(lang==="en"?"Move to city":"Уехать в город")+" (+"+r+" ⭐)";
+    } else win.classList.remove("on");
+  }
+
+  /* ── Платформа: Яндекс Игры или обычный браузер ────────────── */
+  var Platform = (function () {
+    var sdk = null, player = null, boards = null;
+    var kind = "web", inited = null;
+
+    function loadSdk() {
+      return new Promise(function (resolve) {
+        if (window.YaGames) return resolve(true);
+        if (!/yandex/i.test(location.hostname || "")) return resolve(false);
+        var sc = document.createElement("script");
+        sc.src = "https://yandex.ru/games/sdk/v2";
+        sc.onload = function () { resolve(!!window.YaGames); };
+        sc.onerror = function () { resolve(false); };
+        document.head.appendChild(sc);
+      });
+    }
+
+    function init() {
+      if (inited) return inited;
+      inited = loadSdk().then(function (ok) {
+        if (!ok || !window.YaGames) { kind = "web"; return false; }
+        return window.YaGames.init().then(function (s) {
+          sdk = s; kind = "yandex";
+          try { if (sdk.features && sdk.features.LoadingAPI) sdk.features.LoadingAPI.ready(); } catch (e) {}
+          try { player = sdk.getPlayer({ scopes: false }); } catch (e) { player = null; }
+          try { sdk.getLeaderboards().then(function (b) { boards = b; }).catch(function () {}); } catch (e) {}
+          return true;
+        });
+      }).catch(function () { kind = "web"; return false; });
+      return inited;
+    }
+
+    function cloudSave(data) {
+      if (!player) return;
+      try {
+        var p = player.setData({ save: data }, false);
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
+    }
+
+    function cloudLoad() {
+      if (!player) return Promise.resolve(null);
+      try {
+        return player.getData()
+          .then(function (d) { return d && d.save ? d.save : null; })
+          .catch(function () { return null; });
+      } catch (e) { return Promise.resolve(null); }
+    }
+
+    function interstitial(after) {
+      var done = after || function () {};
+      if (!sdk || !sdk.adv) { done(); return; }
+      try {
+        sdk.adv.showFullscreenAdv({ callbacks: {
+          onClose: function () { done(); },
+          onError: function () { done(); }
+        } });
+      } catch (e) { done(); }
+    }
+
+    function rewarded(onReward, onFail) {
+      var ok = onReward || function () {};
+      var fail = onFail || function () {};
+      if (!sdk || !sdk.adv) { fail(); return; }
+      var got = false;
+      try {
+        sdk.adv.showRewardedVideo({ callbacks: {
+          onRewarded: function () { got = true; ok(); },
+          onClose: function () { if (!got) fail(); },
+          onError: function () { fail(); }
+        } });
+      } catch (e) { fail(); }
+    }
+
+    function submitScore(value) {
+      if (!boards) return;
+      try {
+        var p = boards.setLeaderboardScore(LEADERBOARD_ID, value);
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
+    }
+
+    return {
+      init: init, save: cloudSave, load: cloudLoad,
+      interstitial: interstitial, rewarded: rewarded, submitScore: submitScore,
+      isPortal: function () { return kind === "yandex"; }
+    };
+  })();
+
+  var cloudSaveTimer = null, cloudPending = null;
+  function scheduleCloudSave(data) {
+    cloudPending = data;
+    if (cloudSaveTimer) return;
+    cloudSaveTimer = setTimeout(function () {
+      cloudSaveTimer = null;
+      var d = cloudPending; cloudPending = null;
+      if (d) Platform.save(d);
+    }, 4000);
+  }
+
+  function rewardAdLeft() {
+    if (!state || state.lastAdTurn == null) return 0;
+    return Math.max(0, REWARD_AD_COOLDOWN - (state.turn - state.lastAdTurn));
+  }
+
+  function saveGame(){
+    if (!state) return;
+    try{
+      var toSave=JSON.parse(JSON.stringify(state));
+      delete toSave._bonuses;
+      localStorage.setItem(SAVE_KEY,JSON.stringify(toSave));
+      scheduleCloudSave(toSave);
+      var ind=document.getElementById("save-indicator");
+      if(ind){ind.classList.add("on");if(saveIndicatorTimer)clearTimeout(saveIndicatorTimer);saveIndicatorTimer=setTimeout(function(){ind.classList.remove("on");},1200);}
+    }catch(e){}
+  }
+
+  function loadGame(){
+    try{
+      var raw=localStorage.getItem(SAVE_KEY);
+      if(!raw)return null;
+      var s=JSON.parse(raw);
+      if(!s||typeof s.turn!=="number"||!s.house||!s.tree)return null;
+      if(!Array.isArray(s.beds)||s.beds.length!==4)return null;
+      if(!Array.isArray(s.bedsOwned)||s.bedsOwned.length!==4)return null;
+      s.log=Array.isArray(s.log)?s.log:[];
+      s.bedsOwned=s.bedsOwned.map(function(v){return v===true||v===1?1:(v>1?v:0);});
+      if(s.axe===true)s.axe=1;
+      if(s.canLevel!=null){s.can=s.canLevel>=1?s.canLevel:1;}
+      s.can=s.can||1;
+      if(s.can>CAN_MAX)s.can=CAN_MAX;
+      var loadedCap=canCap(s.can);
+      s.water=Math.min(s.water!=null?s.water:loadedCap,loadedCap);
+      if(s.house.hits!=null&&s.house.sub==null){s.house.sub=s.house.hits;s.house.hits=undefined;}
+      s.house.sub=s.house.sub||0;
+      s.house.level=s.house.level||0;
+      s.decor=(s.decor&&typeof s.decor==="object")?s.decor:{fence:0,chick:0};
+      if(!s.weather)s.weather={rain:0,rainCooldown:Math.floor(MAX_RAIN_EVERY*Math.random()),tradeTimer:TRADE_EVERY-Math.floor(Math.random()*5),trade:0};
+      if(!s.settings||typeof s.settings!=="object")s.settings={anim:true,endless:false};
+      if(typeof s.settings.anim!=="boolean")s.settings.anim=true;
+      if(typeof s.settings.endless!=="boolean")s.settings.endless=false;
+      if(typeof s.settings.sound!=="boolean")s.settings.sound=false;
+      if(typeof s.settings.music!=="boolean")s.settings.music=false;
+      if(typeof s.settings.lang!=="string")s.settings.lang="ru";
+      if(!s.buildings||typeof s.buildings!=="object")s.buildings={coop:0,mill:0};
+      if(typeof s.buildings.coop!=="number")s.buildings.coop=0;
+      if(typeof s.buildings.mill!=="number")s.buildings.mill=0;
+      if(typeof s.coopTimer!=="number")s.coopTimer=0;
+      if(typeof s.millTimer!=="number")s.millTimer=0;
+      if(typeof s.autoTimer!=="number")s.autoTimer=0;
+      if(typeof s.tutorial!=="boolean")s.tutorial=false;
+      if(!Array.isArray(s.contracts))s.contracts=[];
+      if(!s.achievements||typeof s.achievements!=="object")s.achievements={};
+      if(typeof s.harvestStreak!=="number")s.harvestStreak=0;
+      if(typeof s.bestHarvestStreak!=="number")s.bestHarvestStreak=0;
+      if(typeof s.traderSales!=="number")s.traderSales=0;
+      if(typeof s.harvestedTotal!=="number") s.harvestedTotal = s._ach_first_harvest ? 1 : 0;
+      if(typeof s.choppedTotal!=="number") s.choppedTotal = s._ach_first_chop ? 1 : 0;
+      if(typeof s.rainHarvests!=="number") s.rainHarvests = s._ach_rain_lover ? 1 : 0;
+      if(typeof s.contractsDone!=="number") s.contractsDone = s._ach_contract ? 1 : 0;
+      delete s._ach_first_harvest; delete s._ach_first_chop;
+      delete s._ach_rain_lover; delete s._ach_contract;
+      delete s._fenceAck; delete s._chickAck; delete s._teremAck; delete s._recordedWin;
+      return s;
+    }catch(e){return null;}
+  }
+
+  function updateRecords(){
+    if(!state)return;
+    records=records||loadRecords();
+    if(state.won&&state.turn>0&&!runtime.recordedWin){
+      runtime.recordedWin=true;
+      if(!records.bestTeremTurn||state.turn<records.bestTeremTurn)records.bestTeremTurn=state.turn;
+      Platform.submitScore(records.bestTeremTurn);
+    }
+    if(state.gold>records.maxGold)records.maxGold=state.gold;
+    if(state.wood>records.maxWood)records.maxWood=state.wood;
+    if(state.bestHarvestStreak>records.bestNoRot)records.bestNoRot=state.bestHarvestStreak;
+    saveRecords(records);
+  }
+  function checkAchievements(){
+    if(!state)return;
+    ACHIEVEMENTS.forEach(function(a){
+      if(state.achievements[a.id])return;
+      try{
+        if(a.check()){
+          state.achievements[a.id]=true;
+          permanentAch[a.id]=true;
+          savePermanentAch(permanentAch);
+          toast(t("toast_achievement",{name:t("ach_"+a.id)}));
+          sound("achievement");
+        }
+      }catch(e){}
+    });
+  }
+
+  function doPrestige(){
+    if(!state)return;
+    if(state.house.level<3){toast(t("legacy_need_terem"));return;}
+    var gain=calcReputation();
+    meta.reputation+=gain;
+    meta.totalReputation+=gain;
+    meta.prestigeLevel++;
+    saveMeta();
+    push(t("log_prestige",{n:gain}));
+    toast(t("toast_prestige",{n:gain}));
+    hideLegacyModal();
+    hidePause();
+    start(true);
+  }
+
+  function buyPerk(perkId){
+    var perk=PERKS.filter(function(p){return p.id===perkId;})[0];
+    if(!perk)return;
+    if(meta.perks[perkId])return;
+    if(meta.reputation<perk.cost)return;
+    meta.reputation-=perk.cost;
+    meta.perks[perkId]=true;
+    saveMeta();
+    sound("achievement");
+    toast(t("toast_perk",{name:t("perk_"+perkId)}));
+    applyBonuses();
+    renderLegacyModal();
+    render();
+    saveGame();
+  }
+
+  function showStartScreen(){
+    gameStarted=false;
+    var hasSave=!!loadGame();
+    var cont=document.getElementById("btn-start-continue");
+    if(cont)cont.style.display=hasSave?"":"none";
+    document.getElementById("start-screen").classList.add("on");
+  }
+  function hideStartScreen(){document.getElementById("start-screen").classList.remove("on");}
+  function showPause(){if(!gameStarted||!state||state.won)return;paused=true;document.getElementById("pause-menu").classList.add("on");}
+  function hidePause(){paused=false;document.getElementById("pause-menu").classList.remove("on");}
+  function showConfirmReset(cb){confirmCallback=cb||null;document.getElementById("confirm-reset").classList.add("on");}
+  function hideConfirmReset(){confirmCallback=null;document.getElementById("confirm-reset").classList.remove("on");}
+  function doReset(){
+    var cb=confirmCallback;
+    document.getElementById("confirm-reset").classList.remove("on");
+    confirmCallback=null;
+    if(typeof cb==="function"){cb();return;}
+    hidePause();hideStartScreen();start(true);
+  }
+  function toggleFullscreen(){
+    var el2=document.documentElement;
+    var isFs=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
+    try{
+      if(!isFs){
+        if(el2.requestFullscreen)el2.requestFullscreen();
+        else if(el2.webkitRequestFullscreen)el2.webkitRequestFullscreen();
+        else if(el2.mozRequestFullScreen)el2.mozRequestFullScreen();
+        else if(el2.msRequestFullscreen)el2.msRequestFullscreen();
+      } else {
+        if(document.exitFullscreen)document.exitFullscreen();
+        else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+        else if(document.mozCancelFullScreen)document.mozCancelFullScreen();
+        else if(document.msExitFullscreen)document.msExitFullscreen();
+      }
+    }catch(e){}
+  }
+  function goToMainMenu(){if(!gameStarted)return;saveGame();hidePause();showStartScreen();}
+
+  function renderContractsModal(){
+    var box=document.getElementById("contracts-modal-list");
+    if(!box)return;
+    box.innerHTML="";
+    if(state.weather.trade<=0||!state.contracts||state.contracts.length===0){
+      var p=document.createElement("div");
+      p.className="contracts-empty";
+      p.textContent=t("contracts_none");
+      box.appendChild(p);
+      return;
+    }
+    state.contracts.forEach(function(c){
+      var div=document.createElement("div");
+      div.className="contract"+(c.done?" done":"");
+      var title=document.createElement("div");title.className="title";
+      title.textContent=t("contract_"+c.type,{n:c.target});
+      div.appendChild(title);
+      var prog=document.createElement("div");prog.className="progress";
+      var left=document.createElement("span");left.textContent=t("contract_progress",{p:Math.min(c.progress,c.target),t:c.target});
+      var unit=lang==="en"?(c.rewardType==="gold"?"gold":"wood"):(c.rewardType==="gold"?"зол.":"дер.");
+      var right=document.createElement("b");right.textContent="+"+c.reward+" "+unit;
+      prog.appendChild(left);prog.appendChild(right);
+      div.appendChild(prog);
+      box.appendChild(div);
+    });
+  }
+  function showContractsModal(){
+    if(!state||state.weather.trade<=0)return;
+    renderContractsModal();
+    document.getElementById("modal-contracts").classList.add("on");
+  }
+
+  function renderAchievementsModal(){
+    var box=document.getElementById("achievements-list");
+    if(!box)return;
+    box.innerHTML="";
+    ACHIEVEMENTS.forEach(function(a){
+      var unlocked=!!state.achievements[a.id];
+      var div=document.createElement("div");
+      div.className="ach-item "+(unlocked?"unlocked":"locked");
+      var icon=document.createElement("div");icon.className="ach-icon";icon.textContent=unlocked?"✓":"🔒";
+      div.appendChild(icon);
+      var txt=document.createElement("div");txt.className="ach-txt";
+      var nm=document.createElement("div");nm.className="ach-name";nm.textContent=t("ach_"+a.id);
+      var ds=document.createElement("div");ds.className="ach-desc";ds.textContent=t("ach_"+a.id+"_desc");
+      txt.appendChild(nm);txt.appendChild(ds);
+      div.appendChild(txt);
+      box.appendChild(div);
+    });
+  }
+  function renderRecordsModal(){
+    var box=document.getElementById("records-list");
+    if(!box)return;
+    records=loadRecords();
+    box.innerHTML="";
+    function row(name,val,unit){
+      var div=document.createElement("div");div.className="rec-item";
+      var n=document.createElement("span");n.className="rec-name";n.textContent=name;
+      var v=document.createElement("span");v.className="rec-val"+(val==null||val===0?" none":"");
+      v.textContent=(val==null||val===0)?t("records_none"):(val+" "+unit);
+      div.appendChild(n);div.appendChild(v);
+      box.appendChild(div);
+    }
+    row(t("records_best_terem"),records.bestTeremTurn,t("records_units_turn"));
+    row(t("records_max_gold"),records.maxGold,t("records_units_gold"));
+    row(t("records_max_wood"),records.maxWood,t("records_units_wood"));
+    row(t("records_no_rot"),records.bestNoRot,t("records_units_streak"));
+    row(t("records_total_games"),records.totalGames,t("records_units_games"));
+  }
+  function renderLegacyModal(){
+    if(!meta||!state)return;
+    document.getElementById("legacy-rep-value").textContent=meta.reputation;
+    document.getElementById("legacy-level-value").textContent=meta.prestigeLevel;
+    document.getElementById("legacy-total-value").textContent=meta.totalReputation;
+    var info=document.getElementById("legacy-prestige-info");
+    var canPrestige=state.house.level>=3;
+    var rep=canPrestige?calcReputation():0;
+    if(canPrestige)info.innerHTML=t("legacy_gain",{n:rep});
+    else info.textContent=t("legacy_need_terem");
+    var btn=document.getElementById("btn-prestige");
+    btn.disabled=!canPrestige;
+    var box=document.getElementById("perks-list");
+    box.innerHTML="";
+    PERKS.forEach(function(perk){
+      var owned=!!meta.perks[perk.id];
+      var canBuy=!owned&&meta.reputation>=perk.cost;
+      var div=document.createElement("div");
+      div.className="perk-item"+(owned?" owned":"");
+      var ic=document.createElement("div");ic.className="perk-icon";ic.textContent=perk.icon;
+      div.appendChild(ic);
+      var txt=document.createElement("div");txt.className="perk-txt";
+      var nm=document.createElement("div");nm.className="perk-name";nm.textContent=t("perk_"+perk.id);
+      var ds=document.createElement("div");ds.className="perk-desc";ds.textContent=t("perk_"+perk.id+"_desc");
+      txt.appendChild(nm);txt.appendChild(ds);
+      div.appendChild(txt);
+      if(owned){
+        var costSpan=document.createElement("span");costSpan.className="perk-cost";costSpan.textContent="✓";
+        div.appendChild(costSpan);
+      } else {
+        var buyBtn=document.createElement("button");
+        buyBtn.type="button";
+        buyBtn.textContent=perk.cost+" ⭐";
+        buyBtn.disabled=!canBuy;
+        buyBtn.addEventListener("click",function(){buyPerk(perk.id);});
+        div.appendChild(buyBtn);
+      }
+      box.appendChild(div);
+    });
+  }
+  function showLegacyModal(){if(!meta||!state)return;renderLegacyModal();document.getElementById("modal-legacy").classList.add("on");}
+  function hideLegacyModal(){document.getElementById("modal-legacy").classList.remove("on");}
+
+  function handleKey(e){
+    if(!state)return;
+    var tag=(e.target&&e.target.tagName)||"";
+    if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT")return;
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.key==="Escape"||e.key==="Esc"){
+      if(!gameStarted)return;
+      var cr=document.getElementById("confirm-reset");
+      var ac=document.getElementById("modal-achievements");
+      var rc=document.getElementById("modal-records");
+      var lc=document.getElementById("modal-legacy");
+      var cc=document.getElementById("modal-contracts");
+      if(cr.classList.contains("on")){hideConfirmReset();e.preventDefault();return;}
+      if(ac.classList.contains("on")){ac.classList.remove("on");e.preventDefault();return;}
+      if(rc.classList.contains("on")){rc.classList.remove("on");e.preventDefault();return;}
+      if(lc.classList.contains("on")){hideLegacyModal();e.preventDefault();return;}
+      if(cc.classList.contains("on")){cc.classList.remove("on");e.preventDefault();return;}
+      if(paused)hidePause();else if(!state.won)showPause();
+      e.preventDefault();return;
+    }
+    if(paused||!gameStarted)return;
+    if(state.won){if(e.key===" "||e.code==="Space")e.preventDefault();return;}
+    var k=e.key,low=(k||"").toLowerCase();
+    if(k>="1"&&k<="4"){e.preventDefault();bedClick(parseInt(k,10)-1);return;}
+    if(low==="w"||low==="ц"){e.preventDefault();actWell();return;}
+    if(low==="c"||low==="с"){e.preventDefault();actChop();return;}
+    if(low==="h"||low==="р"){e.preventDefault();actHammer();return;}
+    if(k===" "||k==="Spacebar"||e.code==="Space"){
+      var active=document.activeElement;
+      if(active&&active.tagName==="BUTTON")return;
+      e.preventDefault();actWait();
+    }
+  }
+
+  function applyI18n(){
+    document.querySelectorAll("[data-i18n]").forEach(function(node){
+      var key=node.getAttribute("data-i18n");var txt=t(key);if(txt!==key)node.textContent=txt;
+    });
+    document.querySelectorAll("[data-i18n-html]").forEach(function(node){
+      var key=node.getAttribute("data-i18n-html");var txt=t(key);if(txt!==key)node.innerHTML=txt;
+    });
+    document.documentElement.lang=lang;
+    document.title=t("title");
+  }
+
+  function start(freshStart){
+    // настройки (звук, музыка, язык, бесконечный) должны переживать рестарт
+    var keepSettings = (state && state.settings) ? JSON.parse(JSON.stringify(state.settings)) : null;
+    var saved=freshStart?null:loadGame();
+    if(saved){
+      state=saved;
+      lang=state.settings.lang||"ru";
+      applyBonuses();
+      state.water=Math.min(state.water,canCap(state.can));
+      if(state.turn>1)state.tutorial=false;
+      state.achievements=Object.assign({},permanentAch,state.achievements||{});
+      (function(){
+        var changed=false,k;
+        for(k in state.achievements){
+          if(!Object.prototype.hasOwnProperty.call(state.achievements,k))continue;
+          if(state.achievements[k]&&!permanentAch[k]){permanentAch[k]=true;changed=true;}
+        }
+        if(changed)savePermanentAch(permanentAch);
+      })();
+      syncRuntimeFromState();
+      push(t("log_continue",{turn:state.turn}));
+    } else {
+      state=fresh();
+      if(keepSettings) state.settings=Object.assign(state.settings,keepSettings);
+      applyBonuses();
+      lang=state.settings.lang||"ru";
+      state.achievements=Object.assign({},permanentAch);
+      resetRuntime();
+      push(t("log_fresh_1"));push(t("log_fresh_2"));push(t("log_fresh_3"));
+      records=loadRecords();
+      records.totalGames=(records.totalGames||0)+1;
+      saveRecords(records);
+    }
+    gameStarted=true;
+    paused=false;
+    resetFarmer();
+    applyI18n();
+    render();
+    saveGame();
+    if (state.settings.music) {
+      try { setTimeout(musicStart, 400); } catch(e) {}
+    }
+  }
+
+  function bind(){
+    el={
+      turn:document.getElementById("stat-turn"),gold:document.getElementById("stat-gold"),wood:document.getElementById("stat-wood"),
+      water:document.getElementById("stat-water"),rain:document.getElementById("stat-rain"),trade:document.getElementById("stat-trade"),
+      houseName:document.getElementById("house-name"),houseProg:document.getElementById("house-prog"),houseBar:document.getElementById("house-bar"),
+      houseNext:document.getElementById("house-next"),log:document.getElementById("log-list"),hint:document.getElementById("hint")
+    };
+    document.getElementById("btn-well").addEventListener("click",actWell);
+    document.getElementById("btn-tree").addEventListener("click",actChop);
+    document.getElementById("btn-house").addEventListener("click",actHammer);
+    for(var i=0;i<4;i++){(function(idx){document.getElementById("btn-bed-"+idx).addEventListener("click",function(){bedClick(idx);});})(i);}
+    document.getElementById("btn-log-toggle").addEventListener("click",function(){logExpanded=!logExpanded;renderLog();});
+    document.getElementById("btn-start-continue").addEventListener("click",function(){hideStartScreen();start(false);});
+    document.getElementById("btn-start-new").addEventListener("click",function(){
+      if(loadGame()){showConfirmReset(function(){hideStartScreen();start(true);});}
+      else{hideStartScreen();start(true);}
+    });
+    document.getElementById("btn-pause-resume").addEventListener("click",hidePause);
+    document.getElementById("btn-pause-restart").addEventListener("click",function(){showConfirmReset(function(){hidePause();Platform.interstitial(function(){start(true);});});});
+    document.getElementById("btn-pause-menu").addEventListener("click",goToMainMenu);
+    document.getElementById("btn-confirm-cancel").addEventListener("click",hideConfirmReset);
+    document.getElementById("btn-confirm-ok").addEventListener("click",doReset);
+    document.getElementById("confirm-reset").addEventListener("click",function(e){if(e.target===this)hideConfirmReset();});
+    document.getElementById("btn-fullscreen").addEventListener("click",toggleFullscreen);
+    if(!document.documentElement.requestFullscreen&&!document.documentElement.webkitRequestFullscreen){
+      var fsBtn=document.getElementById("btn-fullscreen");if(fsBtn)fsBtn.style.display="none";
+    }
+    var adBtn=document.getElementById("btn-reward-ad");
+    if(adBtn){
+      Platform.init().then(function(){adBtn.style.display=Platform.isPortal()?"":"none";});
+      adBtn.addEventListener("click",function(){
+        if(!state||state.won)return;
+        var left=rewardAdLeft();
+        if(left>0){toast(t("ad_wait",{n:left}));return;}
+        Platform.rewarded(function(){
+          state.gold+=REWARD_AD_GOLD;
+          state.lastAdTurn=state.turn;
+          saveGame();render();
+          toast(t("ad_done",{n:REWARD_AD_GOLD}));
+        },function(){toast(t("ad_fail"));});
+      });
+    }
+    document.getElementById("btn-again").addEventListener("click",function(){
+      Platform.interstitial(function(){start(true);});
+    });
+    document.getElementById("btn-endless").addEventListener("click",function(){
+      state.settings.endless=true;state.won=false;
+      push(t("log_endless_on"));saveGame();render();checkAchievements();
+    });
+    document.getElementById("btn-prestige-win").addEventListener("click",doPrestige);
+    document.getElementById("btn-prestige").addEventListener("click",doPrestige);
+    document.getElementById("btn-wait").addEventListener("click",actWait);
+    document.getElementById("btn-stump-wait").addEventListener("click",actWait);
+    document.getElementById("btn-quests-hud").addEventListener("click",showContractsModal);
+    document.getElementById("btn-quests-trader").addEventListener("click",showContractsModal);
+    var panel=document.getElementById("settings-panel");
+    var btnSettings=document.getElementById("btn-settings");
+    btnSettings.addEventListener("click",function(){var on=panel.classList.toggle("on");btnSettings.setAttribute("aria-expanded",on?"true":"false");});
+    document.getElementById("btn-settings-close").addEventListener("click",function(){panel.classList.remove("on");btnSettings.setAttribute("aria-expanded","false");});
+    document.addEventListener("click",function(e){
+      if(!panel.classList.contains("on"))return;
+      if(panel.contains(e.target)||btnSettings.contains(e.target))return;
+      panel.classList.remove("on");btnSettings.setAttribute("aria-expanded","false");
+    });
+    document.getElementById("opt-anim").addEventListener("change",function(e){state.settings.anim=e.target.checked;saveGame();drawAll();});
+    document.getElementById("opt-endless").addEventListener("change",function(e){
+      state.settings.endless=e.target.checked;
+      if(state.settings.endless&&state.won){state.won=false;push(t("log_endless_toggle"));}
+      saveGame();render();checkAchievements();
+    });
+    document.getElementById("opt-sound").addEventListener("change",function(e){state.settings.sound=e.target.checked;saveGame();});
+    document.getElementById("opt-music").addEventListener("change",function(e){
+      state.settings.music=e.target.checked;
+      musicToggle(e.target.checked);
+      saveGame();
+    });
+    document.getElementById("opt-lang").addEventListener("change",function(e){
+      lang=e.target.value;state.settings.lang=lang;saveGame();applyI18n();render();
+    });
+    document.getElementById("btn-show-achievements").addEventListener("click",function(){renderAchievementsModal();document.getElementById("modal-achievements").classList.add("on");});
+    document.getElementById("btn-show-records").addEventListener("click",function(){renderRecordsModal();document.getElementById("modal-records").classList.add("on");});
+    document.getElementById("btn-show-legacy").addEventListener("click",showLegacyModal);
+    document.getElementById("pill-reputation").addEventListener("click",showLegacyModal);
+    document.querySelectorAll("[data-close-modal]").forEach(function(b){
+      b.addEventListener("click",function(){var id=b.getAttribute("data-close-modal");var m=document.getElementById(id);if(m)m.classList.remove("on");});
+    });
+    ["modal-achievements","modal-records","modal-legacy","modal-contracts"].forEach(function(id){
+      var m=document.getElementById(id);
+      if(m)m.addEventListener("click",function(e){if(e.target===this)this.classList.remove("on");});
+    });
+    document.addEventListener("keydown",handleKey);
+
+    /* ── Страховочное сохранение: visibilitychange / pagehide / beforeunload ── */
+    document.addEventListener("visibilitychange", function(){
+      if(document.visibilityState === "hidden" && gameStarted && state) saveGame();
+    });
+    window.addEventListener("pagehide", function(){
+      if(gameStarted && state) saveGame();
+    });
+    window.addEventListener("beforeunload", function(){
+      if(gameStarted && state) saveGame();
+    });
+
+    var cv=document.getElementById("scene-canvas");
+    ctx=cv.getContext("2d");
+    bgCanvas=document.createElement("canvas");bgCanvas.width=CW;bgCanvas.height=CH;
+    shadowCanvas=document.createElement("canvas");shadowCanvas.width=CW;shadowCanvas.height=CH;
+    shadowCtx=shadowCanvas.getContext("2d");
+    buildBackground();
+    layoutButtons();
+    startLoop();
+  }
+
+  function boot(){
+    meta=loadMeta();
+    records=loadRecords();
+    lastRecordsJSON=JSON.stringify(records);
+    permanentAch=loadPermanentAch();
+    bind();
+    state=fresh();
+    applyBonuses();
+    state.achievements=Object.assign({},permanentAch);
+    resetRuntime();
+    resetFarmer();
+    drawAll();
+    applyI18n();
+    var verEl=document.getElementById("app-version");
+    if(verEl)verEl.textContent="v"+VERSION;
+    Platform.init().then(function(){
+      if(!Platform.isPortal())return;
+      if(loadGame())return;
+      Platform.load().then(function(cloud){
+        if(!cloud)return;
+        try{ localStorage.setItem(SAVE_KEY,JSON.stringify(cloud)); }catch(e){ return; }
+        showStartScreen();
+      });
+    });
+    showStartScreen();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
